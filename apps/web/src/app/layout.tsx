@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'FinFlow',
-    template: '%s | FinFlow',
+    default: 'Zarova',
+    template: '%s | Zarova',
   },
   description: 'Modern Financial Management Platform',
 };

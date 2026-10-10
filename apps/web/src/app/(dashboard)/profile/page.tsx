@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import { apiFetch } from '@/lib/api';
+import { updateAuthUser } from '@/lib/auth';
 
 interface UserProfile {
   id: number;
@@ -75,14 +76,6 @@ export default function ProfilePage() {
 
       setFirstName(data.firstName);
       setLastName(data.lastName);
-
-      /*
-       * Keep localStorage synchronized.
-       */
-      localStorage.setItem(
-        'user',
-        JSON.stringify(data),
-      );
     } catch (error) {
       const message =
         error instanceof Error
@@ -155,23 +148,10 @@ export default function ProfilePage() {
         updatedProfile.lastName,
       );
 
-      /*
-       * ======================================
-       * UPDATE LOCAL USER
-       * ======================================
-       */
-      localStorage.setItem(
-        'user',
-        JSON.stringify(updatedProfile),
-      );
-
-      /*
-       * Notify Sidebar and other components
-       * that the profile has changed.
-       */
-      window.dispatchEvent(
-        new Event('user-profile-updated'),
-      );
+      updateAuthUser({
+        firstName: updatedProfile.firstName,
+        lastName: updatedProfile.lastName,
+      });
 
       setSuccess(
         'Profile updated successfully',
@@ -525,7 +505,7 @@ export default function ProfilePage() {
             <h2>Account Information</h2>
 
             <p>
-              Details and status of your FinFlow
+              Details and status of your Zarova
               account.
             </p>
           </div>

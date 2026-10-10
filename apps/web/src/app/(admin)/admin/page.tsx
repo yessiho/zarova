@@ -68,9 +68,9 @@ export default function AdminOverviewPage() {
     <div className="admin-page">
       <header className="page-header">
         <div>
-          <div className="admin-eyebrow"><ShieldCheck size={15} />FinFlow Control Center</div>
+          <div className="admin-eyebrow"><ShieldCheck size={15} />Zarova Control Center</div>
           <h1 className="page-title">Admin Overview</h1>
-          <p className="page-description">Monitor administrator access and move quickly between FinFlow operational controls.</p>
+          <p className="page-description">Monitor administrator access and move quickly between Zarova operational controls.</p>
         </div>
         <div className="page-actions">
           <button type="button" className="secondary-button" onClick={() => void load({ refresh: true })} disabled={loading || refreshing}>
@@ -112,7 +112,7 @@ export default function AdminOverviewPage() {
         </section>
 
         <section className="admin-panel admin-quick-actions">
-          <div className="admin-panel-header"><div><span className="admin-eyebrow">Operations</span><h2>Quick access</h2><p>Core areas of the FinFlow administration console.</p></div></div>
+          <div className="admin-panel-header"><div><span className="admin-eyebrow">Operations</span><h2>Quick access</h2><p>Core areas of the Zarova administration console.</p></div></div>
           <div className="admin-quick-action-list">
             <Link href="/admin/administrators" className="admin-quick-action"><div className="admin-quick-action-icon"><UserCog size={18} /></div><div><strong>Administrators</strong><span>Manage privileged accounts and roles.</span></div><ArrowRight size={16} /></Link>
             <Link href="/admin/transactions" className="admin-quick-action"><div className="admin-quick-action-icon"><Clock3 size={18} /></div><div><strong>Transactions</strong><span>Review transaction activity and exceptions.</span></div><ArrowRight size={16} /></Link>

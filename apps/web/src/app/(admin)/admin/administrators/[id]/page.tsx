@@ -973,7 +973,7 @@ export default function AdministratorDetailsPage() {
                 <h3>No roles assigned</h3>
                 <p>
                   Assign an RBAC role to grant this
-                  administrator access to FinFlow
+                  administrator access to Zarova
                   operational functions.
                 </p>
               </div>

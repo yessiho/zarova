@@ -2,7 +2,6 @@
 'use client';
 
 import {
-  FormEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -625,7 +624,7 @@ export default function WalletDetailsPage() {
   ========================================================== */
 
   async function handleDeposit(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 
@@ -679,7 +678,7 @@ export default function WalletDetailsPage() {
   ========================================================== */
 
   async function handleWithdraw(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 
@@ -744,7 +743,7 @@ export default function WalletDetailsPage() {
   ========================================================== */
 
   async function handleTransfer(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 

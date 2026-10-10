@@ -1,8 +1,8 @@
-{
-  "name": "finflow",
+﻿{
+  "name": "zarova",
   "version": "1.0.0",
   "private": true,
-  "description": "FinFlow Financial Management Platform",
+  "description": "Zarova Financial Management Platform",
   "main": "index.js",
   "directories": {
     "doc": "docs",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yessiho/finflow.git"
+    "url": "git+https://github.com/yessiho/zarova.git"
   },
   "keywords": [
     "fintech",
@@ -27,9 +27,9 @@
   "author": "Yessiho Gbenahon Peter",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/yessiho/finflow/issues"
+    "url": "https://github.com/yessiho/zarova/issues"
   },
-  "homepage": "https://github.com/yessiho/finflow#readme",
+  "homepage": "https://github.com/yessiho/zarova#readme",
   "devDependencies": {
     "prettier": "^3.9.6"
   }

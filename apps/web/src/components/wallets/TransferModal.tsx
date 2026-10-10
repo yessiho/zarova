@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 
 import { apiFetch } from '@/lib/api';
@@ -54,7 +54,7 @@ export default function TransferModal({
     (item) => item.id !== wallet.id && item.currency === wallet.currency,
   );
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: { preventDefault(): void }) {
     event.preventDefault();
 
     setError('');

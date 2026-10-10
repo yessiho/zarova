@@ -288,7 +288,7 @@ export default function AdminTransactionsPage() {
 
           <p className="page-description">
             Monitor and investigate customer financial
-            transactions across FinFlow.
+            transactions across Zarova.
           </p>
         </div>
 

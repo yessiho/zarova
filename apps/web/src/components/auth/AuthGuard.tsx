@@ -47,14 +47,6 @@ export default function AuthGuard({
       const authenticated =
         hasAuthSession();
 
-      console.log(
-        'AUTH GUARD CHECK:',
-        {
-          pathname,
-          authenticated,
-        },
-      );
-
       if (!authenticated) {
         setIsAuthenticated(false);
 

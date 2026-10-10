@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import Link from 'next/link';
 import {
@@ -186,7 +186,7 @@ export default function LoginPage() {
   // ============================================================
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 
@@ -354,7 +354,7 @@ export default function LoginPage() {
             </div>
 
             <div className="login-brand-name">
-              FinFlow
+              Zarova
             </div>
 
             <h1>
@@ -408,7 +408,7 @@ export default function LoginPage() {
           </div>
 
           <div className="login-brand-footer">
-            © {new Date().getFullYear()} FinFlow.
+            © {new Date().getFullYear()} Zarova.
             Financial Management Platform.
           </div>
         </section>
@@ -427,7 +427,7 @@ export default function LoginPage() {
               </div>
 
               <span>
-                FinFlow
+                Zarova
               </span>
             </div>
 

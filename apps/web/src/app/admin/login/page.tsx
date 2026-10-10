@@ -436,7 +436,7 @@ export default function AdminLoginPage() {
        * ------------------------------------------------------
        * Clear existing USER or ADMIN session.
        *
-       * FinFlow currently uses one frontend auth storage
+       * Zarova currently uses one frontend auth storage
        * session.
        * ------------------------------------------------------
        */
@@ -670,7 +670,7 @@ export default function AdminLoginPage() {
 
           <div>
             <strong>
-              FinFlow
+              Zarova
             </strong>
 
             <span>
@@ -712,7 +712,7 @@ export default function AdminLoginPage() {
             </h1>
 
             <p>
-              Sign in with your FinFlow
+              Sign in with your Zarova
               administrator credentials.
             </p>
 
@@ -784,7 +784,7 @@ export default function AdminLoginPage() {
                     setError('');
                   }
                 }}
-                placeholder="admin@finflow.com"
+                placeholder="admin@zarova.com"
                 autoComplete="username"
                 autoFocus
                 disabled={loading}
@@ -926,7 +926,7 @@ export default function AdminLoginPage() {
           <span>
             Protected administrator access.
             Your permissions are enforced by
-            FinFlow RBAC.
+            Zarova RBAC.
           </span>
 
         </div>

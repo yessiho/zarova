@@ -1,6 +1,6 @@
 
 // ============================================================
-// FINFLOW - AUTHENTICATION UTILITIES
+// ZAROVA - AUTHENTICATION UTILITIES
 // ============================================================
 //
 // Centralized authentication session management.
@@ -29,9 +29,9 @@
 // STORAGE KEYS
 // ============================================================
 
-const ACCESS_TOKEN_KEY = 'finflow_access_token';
+const ACCESS_TOKEN_KEY = 'zarova_access_token';
 
-const USER_KEY = 'finflow_user';
+const USER_KEY = 'zarova_user';
 
 
 // ============================================================
@@ -103,7 +103,7 @@ function dispatchUserProfileUpdated(): void {
 /*
  * Retrieve the current authentication token.
  *
- * Only the FinFlow centralized storage key is used.
+ * Only the Zarova centralized storage key is used.
  *
  * Legacy storage keys are intentionally not migrated.
  *

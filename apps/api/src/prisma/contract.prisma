@@ -272,3 +272,212 @@ model WalletAccount {
   @@check(expression: "(status = ANY (ARRAY['ACTIVE'::text, 'FROZEN'::text, 'SUSPENDED'::text, 'CLOSED'::text]))", map: "walletAccount_status_check_a25ed46d")
   @@map("walletAccount")
 }
+
+// ============================================================
+// PAYMENT
+// ============================================================
+
+model Payment {
+  id                    Int         @id(map: "payment_pkey") @default(autoincrement())
+  reference             String      @unique(map: "payment_reference_key")
+  sourceWalletId        Int
+  destinationWalletId   Int
+  amount                BigInt
+  currency              String
+  description           String?
+  status                String      @default("PENDING")
+  createdByAdminId      Int
+  approvedByAdminId     Int?
+  rejectedByAdminId     Int?
+  rejectionReason       String?
+  transactionId         Int?
+  createdAt             Timestamptz @default(now())
+  updatedAt             Timestamptz
+  approvedAt            Timestamptz?
+  rejectedAt            Timestamptz?
+
+  @@index([status], name: "payment_status_idx")
+  @@index([createdByAdminId], name: "payment_createdByAdminId_idx")
+  @@index([sourceWalletId], name: "payment_sourceWalletId_idx")
+  @@index([destinationWalletId], name: "payment_destinationWalletId_idx")
+  @@index([createdAt], name: "payment_createdAt_idx")
+  @@check(expression: "(status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text, 'PROCESSING'::text, 'COMPLETED'::text, 'FAILED'::text]))", map: "payment_status_check")
+  @@check(expression: "(currency = ANY (ARRAY['NGN'::text, 'USD'::text, 'EUR'::text, 'GBP'::text]))", map: "payment_currency_check")
+  @@check(expression: "(amount > 0)", map: "payment_amount_check")
+  @@map("payment")
+}
+
+model ComplianceCase {
+  id                  Int         @id @default(autoincrement())
+  reference           String      @unique
+
+  type                String
+  priority            String
+  status              String      @default("OPEN")
+
+  title               String
+  description         String
+
+  transactionId       Int?
+  walletId            Int?
+
+  alertCode           String?
+
+  createdByAdminId    Int
+  assignedToAdminId   Int?
+
+  resolutionNotes     String?
+
+  escalationReason    String?
+  escalatedByAdminId  Int?
+  escalatedAt         Timestamptz?
+
+  createdAt           Timestamptz @default(now())
+  updatedAt           Timestamptz
+
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([createdByAdminId])
+  @@index([assignedToAdminId])
+  @@index([transactionId])
+  @@index([walletId])
+  @@index([createdAt])
+
+  @@map("complianceCase")
+}
+
+// ============================================================
+// RISK ALERT
+// ============================================================
+
+model RiskAlert {
+  id                  Int          @id @default(autoincrement())
+  reference           String       @unique
+
+  type                String
+  severity            String
+  status              String       @default("OPEN")
+
+  title               String
+  description         String
+
+  transactionId       Int?
+  walletId            Int?
+  userId              Int?
+
+  complianceCaseId    Int?
+
+  alertCode           String?
+
+  createdByAdminId    Int
+  assignedToAdminId   Int?
+
+  resolutionNotes     String?
+  falsePositiveReason String?
+
+  flaggedByAdminId    Int?
+  flaggedAt           Timestamptz?
+
+  releasedByAdminId   Int?
+  releasedAt          Timestamptz?
+
+  createdAt           Timestamptz  @default(now())
+  updatedAt           Timestamptz
+
+  @@index([status])
+  @@index([severity])
+  @@index([type])
+  @@index([createdByAdminId])
+  @@index([transactionId])
+  @@index([walletId])
+  @@index([userId])
+  @@index([complianceCaseId])
+  @@index([createdAt])
+
+  @@map("riskAlert")
+}
+
+// ============================================================
+// RECONCILIATION
+// ============================================================
+
+model ReconciliationRun {
+  id                     Int                   @id @default(autoincrement())
+  reference              String                @unique
+
+  status                 String                @default("PENDING")
+  type                   String
+
+  periodStart            Timestamptz
+  periodEnd              Timestamptz
+
+  totalTransactions      Int                   @default(0)
+  matchedCount           Int                   @default(0)
+  unmatchedCount         Int                   @default(0)
+  discrepancyCount       Int                   @default(0)
+  totalDiscrepancyAmount BigInt                @default(0)
+
+  notes                  String?
+  failureReason          String?
+
+  createdByAdminId       Int
+  approvedByAdminId      Int?
+  approvedAt             Timestamptz?
+
+  createdAt              Timestamptz           @default(now())
+  updatedAt              Timestamptz
+
+  entries                ReconciliationEntry[]
+
+  @@index([status])
+  @@index([type])
+  @@index([createdByAdminId])
+  @@index([createdAt])
+
+  @@map("reconciliationRun")
+}
+
+model ReconciliationEntry {
+  id                  Int               @id @default(autoincrement())
+  runId               Int
+  transactionId       Int
+  status              String
+
+  transactionAmount   BigInt
+  ledgerDebitTotal    BigInt            @default(0)
+  ledgerCreditTotal   BigInt            @default(0)
+  discrepancyAmount   BigInt            @default(0)
+
+  currency            String
+  notes               String?
+
+  createdAt           Timestamptz       @default(now())
+
+  run                 ReconciliationRun @relation(fields:[runId], references:[id], map: "reconciliationEntry_runId_fkey")
+
+  @@index([runId])
+  @@index([transactionId])
+  @@index([status])
+
+  @@map("reconciliationEntry")
+}
+
+// ============================================================
+// SYSTEM SETTINGS
+// ============================================================
+
+model SystemSetting {
+  id               Int         @id @default(autoincrement())
+  key              String      @unique
+  value            String
+  description      String?
+  category         String      @default("GENERAL")
+  dataType         String      @default("STRING")
+  updatedByAdminId Int?
+  createdAt        Timestamptz @default(now())
+  updatedAt        Timestamptz
+
+  @@index([category])
+  @@map("systemSetting")
+}

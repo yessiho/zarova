@@ -8,7 +8,6 @@ import {
   useState,
 } from 'react';
 
-import { useRouter } from 'next/navigation';
 
 import {
   RefreshCw,
@@ -270,8 +269,6 @@ function getCurrencyBalances(
 ===================================================== */
 
 export default function LedgerPage() {
-  const router = useRouter();
-
   const [accounts, setAccounts] =
     useState<LedgerAccount[]>([]);
 
@@ -288,20 +285,6 @@ export default function LedgerPage() {
     useRef(false);
 
   /* =====================================================
-     UNAUTHORIZED HANDLER
-  ===================================================== */
-
-  const handleUnauthorized = useCallback(() => {
-    localStorage.removeItem('access_token');
-
-    localStorage.removeItem('user');
-
-    setAccounts([]);
-
-    router.replace('/login');
-  }, [router]);
-
-  /* =====================================================
      LOAD LEDGER ACCOUNTS
   ===================================================== */
 
@@ -316,13 +299,6 @@ export default function LedgerPage() {
       try {
         setError('');
 
-        /*
-         * Clear old data before loading.
-         *
-         * This prevents previously displayed user data
-         * from remaining visible while another request
-         * is being processed.
-         */
         if (!isRefresh) {
           setAccounts([]);
           setLoading(true);
@@ -330,16 +306,6 @@ export default function LedgerPage() {
           setRefreshing(true);
         }
 
-        /*
-         * API request.
-         *
-         * apiFetch automatically sends:
-         *
-         * Authorization: Bearer <access_token>
-         *
-         * The backend MUST use the authenticated user
-         * from the JWT to filter ledger accounts.
-         */
         const response: unknown =
           await apiFetch('/ledger/accounts');
 
@@ -347,19 +313,11 @@ export default function LedgerPage() {
           normalizeLedgerResponse(response);
 
         if (!normalizedAccounts) {
-          console.error(
-            'Unexpected ledger API response:',
-            response,
-          );
-
           throw new Error(
-            'Unexpected response received from the ledger API.',
+            'Unexpected response from ledger API.',
           );
         }
 
-        /*
-         * Replace existing data completely.
-         */
         setAccounts(normalizedAccounts);
       } catch (caughtError: unknown) {
         console.error(
@@ -367,43 +325,21 @@ export default function LedgerPage() {
           caughtError,
         );
 
-        const message = getErrorMessage(
-          caughtError,
-          'Unable to load ledger accounts.',
-        );
-
-        const lowerCaseMessage =
-          message.toLowerCase();
-
-        if (
-          lowerCaseMessage.includes(
-            'unauthorized',
-          ) ||
-          lowerCaseMessage.includes(
-            'unauthenticated',
-          ) ||
-          lowerCaseMessage.includes('401')
-        ) {
-          handleUnauthorized();
-
-          return;
-        }
-
-        /*
-         * Clear potentially stale data.
-         */
         setAccounts([]);
 
-        setError(message);
+        setError(
+          getErrorMessage(
+            caughtError,
+            'Unable to load ledger accounts.',
+          ),
+        );
       } finally {
         setLoading(false);
-
         setRefreshing(false);
-
         requestInProgress.current = false;
       }
     },
-    [handleUnauthorized],
+    [],
   );
 
   /* =====================================================

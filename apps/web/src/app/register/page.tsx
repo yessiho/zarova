@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -135,7 +135,7 @@ export default function RegisterPage() {
   const passwordsMatch =
     confirmPassword.length > 0 && password === confirmPassword;
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: { preventDefault(): void }) {
     event.preventDefault();
 
     setError('');
@@ -201,7 +201,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="register-brand-name">
-              FinFlow
+              Zarova
             </div>
 
             <h1>
@@ -211,7 +211,7 @@ export default function RegisterPage() {
             </h1>
 
             <p>
-              Create your FinFlow account and manage your wallets,
+              Create your Zarova account and manage your wallets,
               transactions, and financial activities from one secure
               platform.
             </p>
@@ -265,7 +265,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="register-brand-footer">
-            © {new Date().getFullYear()} FinFlow. Financial Management
+            © {new Date().getFullYear()} Zarova. Financial Management
             Platform.
           </div>
         </section>
@@ -280,7 +280,7 @@ export default function RegisterPage() {
                 <Landmark size={24} />
               </div>
 
-              <span>FinFlow</span>
+              <span>Zarova</span>
             </div>
 
             {/* HEADING */}
@@ -289,7 +289,7 @@ export default function RegisterPage() {
                 Create your account
               </span>
 
-              <h2>Get started with FinFlow</h2>
+              <h2>Get started with Zarova</h2>
 
               <p>
                 Fill in your details below to create your financial

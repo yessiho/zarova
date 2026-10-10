@@ -306,10 +306,10 @@ export class WalletsService {
             `${user.firstName} ${user.lastName}`.trim(),
 
           bankName:
-            'FinFlow Virtual Bank',
+            'Zarova Virtual Bank',
 
           bankCode:
-            'FINFLOW',
+            'ZAROVA',
 
           accountType:
             'VIRTUAL',
@@ -354,7 +354,7 @@ export class WalletsService {
    * ==========================================
    * FIND TRANSFER RECIPIENT
    *
-   * Resolve a FinFlow wallet using its virtual
+   * Resolve a Zarova wallet using its virtual
    * account number.
    *
    * This supports user-to-user transfers without

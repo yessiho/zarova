@@ -2268,7 +2268,7 @@ export default function WalletsPage() {
                     </div>
 
                     <small>
-                      Enter the recipient's FinFlow virtual account number.
+                      Enter the recipient's Zarova virtual account number.
                     </small>
 
                   </div>

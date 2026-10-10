@@ -333,6 +333,57 @@ export class LedgerService {
   }
 
   /* ==========================================================
+     POST ADMIN WALLET PAYMENT
+
+     Debit: Source Wallet Liability
+     Credit: Destination Wallet Liability
+     ========================================================== */
+
+  async postWalletPayment(
+    tx: any,
+    transactionId: number,
+    sourceWalletId: number,
+    destinationWalletId: number,
+    amount: bigint,
+    currency: Currency,
+  ) {
+    if (
+      !Number.isSafeInteger(sourceWalletId) ||
+      sourceWalletId <= 0 ||
+      !Number.isSafeInteger(destinationWalletId) ||
+      destinationWalletId <= 0 ||
+      sourceWalletId === destinationWalletId
+    ) {
+      throw new BadRequestException('Invalid payment wallet IDs');
+    }
+
+    if (amount <= 0n) {
+      throw new BadRequestException('Ledger payment amount must be positive');
+    }
+
+    const sourceAccount = await this.getOrCreateAccount(
+      tx,
+      `WALLET-${sourceWalletId}-${currency}`,
+      `Wallet ${sourceWalletId} Liability (${currency})`,
+      'LIABILITY',
+      currency,
+    );
+
+    const destinationAccount = await this.getOrCreateAccount(
+      tx,
+      `WALLET-${destinationWalletId}-${currency}`,
+      `Wallet ${destinationWalletId} Liability (${currency})`,
+      'LIABILITY',
+      currency,
+    );
+
+    return this.createDoubleEntry(tx, transactionId, [
+      { accountId: sourceAccount.id, debit: amount, credit: 0n },
+      { accountId: destinationAccount.id, debit: 0n, credit: amount },
+    ]);
+  }
+
+  /* ==========================================================
      REVERSE LEDGER TRANSACTION
      ========================================================== */
 
@@ -468,13 +519,17 @@ export class LedgerService {
                 totalDebit;
 
           return {
-            ...account,
-            totalDebit:
-              totalDebit.toString(),
-            totalCredit:
-              totalCredit.toString(),
-            balance:
-              balance.toString(),
+            id: account.id,
+            code: account.code,
+            name: account.name,
+            type: account._type,
+            currency: account.currency,
+            active: account.active,
+            createdAt: account.createdAt,
+            updatedAt: account.updatedAt,
+            totalDebit: totalDebit.toString(),
+            totalCredit: totalCredit.toString(),
+            balance: balance.toString(),
           };
         },
       ),
@@ -674,13 +729,17 @@ export class LedgerService {
             totalDebit;
 
       accounts.push({
-        ...account,
-        totalDebit:
-          totalDebit.toString(),
-        totalCredit:
-          totalCredit.toString(),
-        balance:
-          balance.toString(),
+        id: account.id,
+        code: account.code,
+        name: account.name,
+        type: account._type,
+        currency: account.currency,
+        active: account.active,
+        createdAt: account.createdAt,
+        updatedAt: account.updatedAt,
+        totalDebit: totalDebit.toString(),
+        totalCredit: totalCredit.toString(),
+        balance: balance.toString(),
       });
     }
 

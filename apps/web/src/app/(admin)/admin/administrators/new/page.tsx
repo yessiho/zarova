@@ -185,7 +185,7 @@ export default function CreateAdministratorPage() {
           </h1>
 
           <p className="page-description">
-            Create a privileged FinFlow administrator account.
+            Create a privileged Zarova administrator account.
             Access permissions can be assigned after the account
             is created.
           </p>
@@ -312,7 +312,7 @@ export default function CreateAdministratorPage() {
                       setEmail(event.target.value);
                       if (error) setError('');
                     }}
-                    placeholder="administrator@finflow.com"
+                    placeholder="administrator@zarova.com"
                     autoComplete="email"
                     disabled={loading}
                     required
@@ -442,7 +442,7 @@ export default function CreateAdministratorPage() {
                 <p>
                   New administrators are created as active accounts.
                   Role assignments are managed separately through
-                  FinFlow RBAC.
+                  Zarova RBAC.
                 </p>
               </div>
             </div>

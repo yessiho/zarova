@@ -1,7 +1,6 @@
 
 'use client';
 
-import type { FormEvent } from 'react';
 
 import {
   useEffect,
@@ -195,7 +194,7 @@ export default function LoginPage() {
   // ==========================================================
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 
@@ -293,8 +292,8 @@ export default function LoginPage() {
       //
       // auth.ts handles:
       //
-      // - finflow_access_token
-      // - finflow_user
+      // - zarova_access_token
+      // - zarova_user
       // - auth-session-updated event
       // - user-profile-updated event
       //
@@ -391,7 +390,7 @@ export default function LoginPage() {
             </div>
 
             <div className="login-brand-name">
-              FinFlow
+              Zarova
             </div>
 
             <h1>
@@ -447,7 +446,7 @@ export default function LoginPage() {
           </div>
 
           <div className="login-brand-footer">
-            © {new Date().getFullYear()} FinFlow.
+            © {new Date().getFullYear()} Zarova.
             Financial Management Platform.
           </div>
         </section>
@@ -467,7 +466,7 @@ export default function LoginPage() {
               </div>
 
               <span>
-                FinFlow
+                Zarova
               </span>
             </div>
 

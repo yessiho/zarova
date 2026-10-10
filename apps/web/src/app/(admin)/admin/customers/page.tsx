@@ -125,7 +125,7 @@ export default function AdminCustomersPage() {
           <h1 className="page-title">Customers</h1>
           <p className="page-description">
             Search, review and manage customer accounts
-            across FinFlow.
+            across Zarova.
           </p>
         </div>
 

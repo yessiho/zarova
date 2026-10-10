@@ -18,6 +18,7 @@ interface FindAuditLogsOptions {
   entity?: string;
   userId?: number;
   adminId?: number;
+  search?: string;
 }
 
 @Injectable()
@@ -120,6 +121,22 @@ export class AuditService {
         log.adminId !== options.adminId
       ) {
         return false;
+      }
+
+      if (options.search) {
+        const term = options.search.toLowerCase();
+        const searchable = [
+          log.action,
+          log.entity,
+          log.entityId,
+          log.metadata,
+          String(log.userId ?? ''),
+          String(log.adminId ?? ''),
+        ];
+        const matches = searchable.some((v) =>
+          String(v ?? '').toLowerCase().includes(term),
+        );
+        if (!matches) return false;
       }
 
       return true;

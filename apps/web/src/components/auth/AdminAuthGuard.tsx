@@ -187,7 +187,7 @@ export default function AdminAuthGuard({
          * Do NOT clear the session.
          *
          * The user may still be legitimately logged into
-         * the normal FinFlow application.
+         * the normal Zarova application.
          *
          * Simply deny access to the Admin console.
          * --------------------------------------------------
@@ -263,7 +263,7 @@ export default function AdminAuthGuard({
           </strong>
 
           <p>
-            Please wait while FinFlow verifies your
+            Please wait while Zarova verifies your
             administrator session.
           </p>
         </div>
@@ -300,7 +300,7 @@ export default function AdminAuthGuard({
 
           <p>
             This area is restricted to authorized
-            FinFlow administrators.
+            Zarova administrators.
           </p>
 
           <p className="admin-access-denied-note">

@@ -165,8 +165,8 @@ export default function Sidebar() {
      *
      * auth.ts removes:
      *
-     * - finflow_access_token
-     * - finflow_user
+     * - zarova_access_token
+     * - zarova_user
      *
      * It also dispatches authentication events.
      */
@@ -295,7 +295,7 @@ export default function Sidebar() {
         </div>
 
         <span className="brand-name">
-          FinFlow
+          Zarova
         </span>
       </div>
 

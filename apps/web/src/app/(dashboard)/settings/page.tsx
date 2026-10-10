@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   AlertCircle,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { apiFetch } from '@/lib/api';
+import { updateAuthUser } from '@/lib/auth';
 
 interface UserProfile {
   id: number;
@@ -67,14 +68,6 @@ export default function SettingsPage() {
 
       setFirstName(data.firstName || '');
       setLastName(data.lastName || '');
-
-      /*
-       * Keep Sidebar local user data updated.
-       */
-      localStorage.setItem(
-        'user',
-        JSON.stringify(data),
-      );
     } catch (error) {
       console.error(error);
 
@@ -98,7 +91,7 @@ export default function SettingsPage() {
    * ==========================================
    */
   async function handleUpdateProfile(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 
@@ -137,20 +130,10 @@ export default function SettingsPage() {
       setFirstName(updatedUser.firstName);
       setLastName(updatedUser.lastName);
 
-      /*
-       * Update Sidebar local user data.
-       */
-      localStorage.setItem(
-        'user',
-        JSON.stringify(updatedUser),
-      );
-
-      /*
-       * Notify Sidebar that user data changed.
-       */
-      window.dispatchEvent(
-        new Event('user-profile-updated'),
-      );
+      updateAuthUser({
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+      });
 
       setProfileMessage(
         'Profile updated successfully',
@@ -172,7 +155,7 @@ export default function SettingsPage() {
    * ==========================================
    */
   async function handleChangePassword(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 
@@ -531,7 +514,7 @@ export default function SettingsPage() {
 
               <p>
                 General information about your
-                FinFlow account.
+                Zarova account.
               </p>
             </div>
           </div>

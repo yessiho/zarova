@@ -786,7 +786,7 @@ export default function AuditPage() {
               <p>
                 Monitor important system activities,
                 user actions and security events
-                across FinFlow.
+                across Zarova.
               </p>
             </div>
           </div>
@@ -1006,7 +1006,7 @@ export default function AuditPage() {
                 <p>
                   Detailed record of actions
                   performed across the
-                  FinFlow platform.
+                  Zarova platform.
                 </p>
               </div>
 

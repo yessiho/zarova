@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  FormEvent,
   useState,
 } from 'react';
 
@@ -83,7 +82,7 @@ export default function ForgotPasswordPage() {
   // ============================================================
 
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 
@@ -172,7 +171,7 @@ export default function ForgotPasswordPage() {
           </div>
 
           <span>
-            FinFlow
+            Zarova
           </span>
 
         </Link>

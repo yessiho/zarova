@@ -29,7 +29,7 @@ export default function Home() {
           <Landmark size={28} />
         </div>
 
-        <h1>FinFlow</h1>
+        <h1>Zarova</h1>
 
         <p>Preparing your financial workspace...</p>
 

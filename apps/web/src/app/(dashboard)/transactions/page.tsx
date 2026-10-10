@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  FormEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -329,7 +328,7 @@ export default function TransactionsPage() {
    */
 
   function handleSearch(
-    event: FormEvent<HTMLFormElement>,
+    event: { preventDefault(): void },
   ) {
     event.preventDefault();
 

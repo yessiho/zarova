@@ -38,9 +38,9 @@ async function bootstrap() {
    * ==========================================
    */
   const config = new DocumentBuilder()
-    .setTitle('FinFlow API')
+    .setTitle('Zarova API')
     .setDescription(
-      'API documentation for the FinFlow financial platform',
+      'API documentation for the Zarova financial platform',
     )
     .setVersion('1.0')
     .addBearerAuth(

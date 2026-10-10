@@ -258,7 +258,7 @@ export default function AdminSidebar() {
             </div>
 
             <div>
-              <strong>FinFlow</strong>
+              <strong>Zarova</strong>
               <span>ADMIN CONSOLE</span>
             </div>
           </Link>
