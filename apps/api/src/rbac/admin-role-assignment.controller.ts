@@ -11,6 +11,14 @@ import {
 
 import type { Request } from 'express';
 
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+
 import { RequirePermissions } from './rbac.decorator.js';
 import { PERMISSION_CODES } from './rbac.constants.js';
 import { RbacGuard } from './rbac.guard.js';
@@ -23,6 +31,8 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+@ApiTags('Admin Role Assignment')
+@ApiBearerAuth('access-token')
 @UseGuards(RbacGuard)
 @Controller('admin')
 export class AdminRoleAssignmentController {
@@ -30,64 +40,56 @@ export class AdminRoleAssignmentController {
     private readonly roleAssignmentService: AdminRoleAssignmentService,
   ) {}
 
-  /**
-   * Get all active roles available for assignment.
-   *
-   * Permission:
-   * ROLE_VIEW
-   */
   @Get('roles')
-  @RequirePermissions(
-    PERMISSION_CODES.ROLE_VIEW,
-  )
+  @RequirePermissions(PERMISSION_CODES.ROLE_VIEW)
+  @ApiOperation({
+    summary: 'List available roles',
+    description: 'Returns all active roles that can be assigned to administrators.',
+  })
+  @ApiResponse({ status: 200, description: 'List of available roles' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   async getAvailableRoles() {
     return this.roleAssignmentService.getAvailableRoles();
   }
 
-  /**
-   * Get all active roles assigned to one administrator.
-   *
-   * Permission:
-   * ROLE_VIEW
-   */
   @Get(':adminId/roles')
-  @RequirePermissions(
-    PERMISSION_CODES.ROLE_VIEW,
-  )
+  @RequirePermissions(PERMISSION_CODES.ROLE_VIEW)
+  @ApiOperation({
+    summary: 'Get roles assigned to an administrator',
+    description: 'Returns the active role assignments for a specific admin account.',
+  })
+  @ApiParam({ name: 'adminId', type: Number })
+  @ApiResponse({ status: 200, description: 'Admin role assignments returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Admin not found' })
   async getAdminRoles(
-    @Param('adminId', ParseIntPipe)
-    adminId: number,
+    @Param('adminId', ParseIntPipe) adminId: number,
   ) {
-    return this.roleAssignmentService.getAdminRoles(
-      adminId,
-    );
+    return this.roleAssignmentService.getAdminRoles(adminId);
   }
 
-  /**
-   * Assign a role to an administrator.
-   *
-   * Permission:
-   * ROLE_ASSIGN
-   *
-   * The acting administrator is taken from the
-   * authenticated JWT. It is NOT supplied by the frontend.
-   */
   @Post(':adminId/roles/:roleId')
-  @RequirePermissions(
-    PERMISSION_CODES.ROLE_ASSIGN,
-  )
+  @RequirePermissions(PERMISSION_CODES.ROLE_ASSIGN)
+  @ApiOperation({
+    summary: 'Assign a role to an administrator',
+    description:
+      'Grants a role to an admin account. The acting administrator is taken from the authenticated JWT. The assignment is audit-logged.',
+  })
+  @ApiParam({ name: 'adminId', type: Number })
+  @ApiParam({ name: 'roleId', type: Number })
+  @ApiResponse({ status: 201, description: 'Role assigned' })
+  @ApiResponse({ status: 400, description: 'Role already assigned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Admin or role not found' })
   async assignRole(
-    @Param('adminId', ParseIntPipe)
-    adminId: number,
-
-    @Param('roleId', ParseIntPipe)
-    roleId: number,
-
-    @Req()
-    request: AuthenticatedRequest,
+    @Param('adminId', ParseIntPipe) adminId: number,
+    @Param('roleId', ParseIntPipe) roleId: number,
+    @Req() request: AuthenticatedRequest,
   ) {
-    const performedByAdminId =
-      Number(request.user?.id);
+    const performedByAdminId = Number(request.user?.id);
 
     return this.roleAssignmentService.assignRole(
       adminId,
@@ -96,28 +98,24 @@ export class AdminRoleAssignmentController {
     );
   }
 
-  /**
-   * Remove/deactivate a role assignment.
-   *
-   * Permission:
-   * ROLE_ASSIGN
-   */
   @Delete(':adminId/roles/:roleId')
-  @RequirePermissions(
-    PERMISSION_CODES.ROLE_ASSIGN,
-  )
+  @RequirePermissions(PERMISSION_CODES.ROLE_ASSIGN)
+  @ApiOperation({
+    summary: 'Remove a role from an administrator',
+    description: 'Deactivates a role assignment. The action is audit-logged.',
+  })
+  @ApiParam({ name: 'adminId', type: Number })
+  @ApiParam({ name: 'roleId', type: Number })
+  @ApiResponse({ status: 200, description: 'Role removed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Assignment not found' })
   async removeRole(
-    @Param('adminId', ParseIntPipe)
-    adminId: number,
-
-    @Param('roleId', ParseIntPipe)
-    roleId: number,
-
-    @Req()
-    request: AuthenticatedRequest,
+    @Param('adminId', ParseIntPipe) adminId: number,
+    @Param('roleId', ParseIntPipe) roleId: number,
+    @Req() request: AuthenticatedRequest,
   ) {
-    const performedByAdminId =
-      Number(request.user?.id);
+    const performedByAdminId = Number(request.user?.id);
 
     return this.roleAssignmentService.removeRole(
       adminId,

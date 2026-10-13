@@ -2,13 +2,17 @@
 'use client';
 
 import {
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 
-import { useRouter } from 'next/navigation';
+import {
+  useRouter,
+  useSearchParams,
+} from 'next/navigation';
 
 import {
   ArrowDownToLine,
@@ -21,6 +25,7 @@ import {
   Landmark,
   Plus,
   RefreshCw,
+  Wallet as WalletIcon,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -92,7 +97,14 @@ type ModalType =
   | 'DEPOSIT'
   | 'WITHDRAW'
   | 'TRANSFER'
+  | 'PAYSTACK'
   | null;
+
+type PaystackInitResponse = {
+  authorizationUrl: string;
+  accessCode: string;
+  reference: string;
+};
 
 type ApiError = {
   message?: string | string[];
@@ -192,8 +204,9 @@ function isValidAmount(
 // COMPONENT
 // ============================================================
 
-export default function WalletsPage() {
+function WalletsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // ============================================================
   // STATE
@@ -236,6 +249,12 @@ export default function WalletsPage() {
     useState(false);
 
   const [submitting, setSubmitting] =
+    useState(false);
+
+  const [paystackWalletId, setPaystackWalletId] =
+    useState<number | ''>('');
+
+  const [verifyingPaystack, setVerifyingPaystack] =
     useState(false);
 
   // ============================================================
@@ -298,6 +317,61 @@ export default function WalletsPage() {
   }, [loadWallets]);
 
   // ============================================================
+  // PAYSTACK CALLBACK VERIFICATION
+  // ============================================================
+
+  useEffect(() => {
+    const reference = searchParams.get('reference');
+    const status = searchParams.get('status');
+
+    if (!reference) {
+      return;
+    }
+
+    async function verifyPaystackCallback() {
+      setVerifyingPaystack(true);
+
+      try {
+        await apiFetch(
+          `/paystack/verify/${encodeURIComponent(reference!)}`,
+        );
+
+        if (status === 'cancelled') {
+          setError('Paystack payment was cancelled.');
+        } else {
+          setSuccess(
+            'Payment verified successfully. Your wallet has been funded.',
+          );
+
+          void loadWallets();
+        }
+      } catch (err: unknown) {
+        setError(
+          getErrorMessage(
+            err,
+            'Payment verification failed. Please contact support if funds were deducted.',
+          ),
+        );
+      } finally {
+        setVerifyingPaystack(false);
+
+        // Clean up URL params without a full navigation
+        const url = new URL(window.location.href);
+        url.searchParams.delete('reference');
+        url.searchParams.delete('status');
+        window.history.replaceState(
+          {},
+          '',
+          url.pathname + (url.search !== '?' ? url.search : ''),
+        );
+      }
+    }
+
+    void verifyPaystackCallback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ============================================================
   // REFRESH
   // ============================================================
 
@@ -323,6 +397,10 @@ export default function WalletsPage() {
 
     setTransferRecipient(null);
 
+    setPaystackWalletId(
+      wallet ? wallet.id : '',
+    );
+
     setError('');
 
     setSuccess('');
@@ -344,6 +422,8 @@ export default function WalletsPage() {
     setRecipientAccountNumber('');
 
     setTransferRecipient(null);
+
+    setPaystackWalletId('');
 
     setError('');
 
@@ -921,6 +1001,83 @@ export default function WalletsPage() {
   }
 
   // ============================================================
+  // PAYSTACK INITIALIZE
+  // ============================================================
+
+  async function initializePaystack() {
+    if (!isValidAmount(amount)) {
+      setError(
+        'Please enter a valid amount greater than zero.',
+      );
+
+      return;
+    }
+
+    const walletId =
+      paystackWalletId !== ''
+        ? paystackWalletId
+        : wallets.find(
+            (w) => w.currency === 'NGN',
+          )?.id;
+
+    if (!walletId) {
+      setError(
+        'Please select a wallet to fund.',
+      );
+
+      return;
+    }
+
+    const fundAmount = parseAmount(amount);
+
+    try {
+      setSubmitting(true);
+
+      setError('');
+
+      const data =
+        await apiFetch<PaystackInitResponse>(
+          '/paystack/initialize',
+          {
+            method: 'POST',
+
+            body: JSON.stringify({
+              amount: fundAmount,
+              walletId,
+            }),
+          },
+        );
+
+      // Open Paystack in a new tab
+      window.open(
+        data.authorizationUrl,
+        '_blank',
+        'noopener,noreferrer',
+      );
+
+      setSuccess(
+        'Paystack checkout opened in a new tab. Complete your payment, then return here and refresh your wallets.',
+      );
+
+      closeModal();
+    } catch (err: unknown) {
+      console.error(
+        'PAYSTACK INIT ERROR:',
+        err,
+      );
+
+      setError(
+        getErrorMessage(
+          err,
+          'Unable to initialize Paystack payment.',
+        ),
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // ============================================================
   // SUBMIT
   // ============================================================
 
@@ -944,6 +1101,10 @@ export default function WalletsPage() {
 
       case 'TRANSFER':
         void transferMoney();
+        break;
+
+      case 'PAYSTACK':
+        void initializePaystack();
         break;
 
       default:
@@ -1038,14 +1199,17 @@ export default function WalletsPage() {
             transferRecipient,
           ) &&
           !amountExceedsBalance
-        : isValidAmount(
-            amount,
-          ) &&
-          !(
-            modal ===
-              'WITHDRAW' &&
-            amountExceedsBalance
-          );
+        : modal === 'PAYSTACK'
+          ? isValidAmount(amount) &&
+            paystackWalletId !== ''
+          : isValidAmount(
+              amount,
+            ) &&
+            !(
+              modal ===
+                'WITHDRAW' &&
+              amountExceedsBalance
+            );
 
   // ============================================================
   // UI
@@ -1187,6 +1351,23 @@ export default function WalletsPage() {
           >
             <X size={17} />
           </button>
+        </div>
+      )}
+
+      {/* ======================================================
+          PAYSTACK VERIFY BANNER
+      ======================================================= */}
+
+      {verifyingPaystack && (
+        <div
+          className="wallet-alert wallet-alert-info"
+          role="status"
+        >
+          <div className="wallet-loading-spinner wallet-loading-spinner-sm" />
+
+          <span>
+            Verifying your Paystack payment...
+          </span>
         </div>
       )}
 
@@ -1810,6 +1991,34 @@ export default function WalletsPage() {
                       </span>
                     </button>
 
+                    {wallet.currency ===
+                      'NGN' && (
+                      <button
+                        type="button"
+                        className="fin-wallet-action fin-wallet-action-paystack"
+                        onClick={() =>
+                          openModal(
+                            'PAYSTACK',
+                            wallet,
+                          )
+                        }
+                        disabled={
+                          wallet.status !==
+                          'ACTIVE'
+                        }
+                      >
+                        <WalletIcon
+                          size={
+                            17
+                          }
+                        />
+
+                        <span>
+                          Fund
+                        </span>
+                      </button>
+                    )}
+
                   </div>
 
                 </article>
@@ -1869,6 +2078,10 @@ export default function WalletsPage() {
                     'TRANSFER' &&
                     'Transfer Money'}
 
+                  {modal ===
+                    'PAYSTACK' &&
+                    'Fund with Paystack'}
+
                 </h2>
 
                 <p>
@@ -1888,6 +2101,10 @@ export default function WalletsPage() {
                   {modal ===
                     'TRANSFER' &&
                     'Move funds between wallets of the same currency.'}
+
+                  {modal ===
+                    'PAYSTACK' &&
+                    'Fund your NGN wallet securely via Paystack.'}
 
                 </p>
 
@@ -2378,6 +2595,166 @@ export default function WalletsPage() {
                 </div>
               )}
 
+            {/* PAYSTACK */}
+
+            {modal ===
+              'PAYSTACK' && (
+
+              <div className="wallet-modal-body">
+
+                {/* WALLET SELECTOR */}
+
+                <div className="wallet-form-group">
+
+                  <label
+                    htmlFor="paystack-wallet"
+                  >
+                    Select Wallet
+                  </label>
+
+                  <select
+                    id="paystack-wallet"
+                    value={
+                      paystackWalletId
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setPaystackWalletId(
+                        Number(
+                          event
+                            .target
+                            .value,
+                        ),
+                      )
+                    }
+                    disabled={
+                      submitting
+                    }
+                  >
+
+                    <option
+                      value=""
+                      disabled
+                    >
+                      — Select a wallet —
+                    </option>
+
+                    {wallets
+                      .filter(
+                        (w) =>
+                          w.currency ===
+                            'NGN' &&
+                          w.status ===
+                            'ACTIVE',
+                      )
+                      .map(
+                        (w) => (
+                          <option
+                            key={
+                              w.id
+                            }
+                            value={
+                              w.id
+                            }
+                          >
+                            NGN Wallet
+                            #{w.id} —{' '}
+                            {
+                              formatBalance(
+                                w,
+                              )
+                            }
+                          </option>
+                        ),
+                      )}
+
+                  </select>
+
+                  <small>
+                    Paystack supports
+                    NGN (Naira) only.
+                  </small>
+
+                </div>
+
+                {/* AMOUNT INPUT */}
+
+                <div className="wallet-form-group">
+
+                  <label
+                    htmlFor="paystack-amount"
+                  >
+                    Amount (NGN)
+                  </label>
+
+                  <div className="wallet-amount-input">
+
+                    <span>
+                      ₦
+                    </span>
+
+                    <input
+                      id="paystack-amount"
+                      type="number"
+                      min="100"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={
+                        amount
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setAmount(
+                          event
+                            .target
+                            .value,
+                        )
+                      }
+                      disabled={
+                        submitting
+                      }
+                    />
+
+                  </div>
+
+                  <small>
+                    Minimum amount
+                    is ₦100. You will
+                    be redirected to
+                    Paystack to complete
+                    payment in a new tab.
+                  </small>
+
+                </div>
+
+                {/* PAYSTACK NOTICE */}
+
+                <div className="paystack-notice">
+
+                  <WalletIcon
+                    size={16}
+                  />
+
+                  <p>
+                    After completing
+                    payment on
+                    Paystack, return
+                    to this page. If
+                    you were redirected
+                    back automatically,
+                    your payment will
+                    be verified and
+                    your wallet updated.
+                  </p>
+
+                </div>
+
+              </div>
+            )}
+
             {/* MODAL FOOTER */}
 
             <div className="wallet-modal-footer">
@@ -2418,7 +2795,10 @@ export default function WalletsPage() {
                       : modal ===
                           'WITHDRAW'
                         ? 'Confirm Withdrawal'
-                        : 'Confirm Transfer'}
+                        : modal ===
+                            'PAYSTACK'
+                          ? 'Pay with Paystack'
+                          : 'Confirm Transfer'}
 
               </button>
 
@@ -2430,5 +2810,12 @@ export default function WalletsPage() {
       )}
 
     </div>
+  );
+}
+export default function WalletsPage() {
+  return (
+    <Suspense>
+      <WalletsPageContent />
+    </Suspense>
   );
 }

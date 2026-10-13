@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+# Only proceed when CI passed
+if: github.event.workflow_run.conclusion == 'success'
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Deploy API
+  # ─────────────────────────────────────────────
+  deploy-api:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    # Guard at job level as well for safety
+    if: github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy API
+        run: |
+          echo "──────────────────────────────────────────────"
+          echo "  Zarova API — Deployment Placeholder"
+          echo "──────────────────────────────────────────────"
+          echo ""
+          echo "  Replace this step with your actual deploy"
+          echo "  command. Common options:"
+          echo ""
+          echo "  Railway:"
+          echo "    railway up --service api"
+          echo ""
+          echo "  Render:"
+          echo "    curl -X POST \$RENDER_DEPLOY_HOOK_URL"
+          echo ""
+          echo "  AWS ECS (via ECR + task definition update):"
+          echo "    aws ecs update-service --cluster zarova \\"
+          echo "      --service api --force-new-deployment"
+          echo ""
+          echo "  Fly.io:"
+          echo "    flyctl deploy --app zarova-api"
+          echo ""
+          echo "  Store credentials in GitHub Actions Secrets:"
+          echo "    Settings → Secrets and variables → Actions"
+          echo "──────────────────────────────────────────────"

@@ -14,7 +14,11 @@ import type { Request } from 'express';
 
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -38,7 +42,14 @@ export class ReconciliationController {
 
   @Get('runs')
   @RequirePermissions(PERMISSION_CODES.RECONCILIATION_VIEW)
-  @ApiOperation({ summary: 'List reconciliation runs' })
+  @ApiOperation({ summary: 'List reconciliation runs', description: 'Returns paginated reconciliation runs with optional status and type filters.' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiQuery({ name: 'type', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Paginated reconciliation runs' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -56,15 +67,23 @@ export class ReconciliationController {
   @Get('runs/:id')
   @RequirePermissions(PERMISSION_CODES.RECONCILIATION_VIEW)
   @ApiOperation({ summary: 'Get reconciliation run with entries' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Reconciliation run with all line entries' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Run not found' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.reconciliationService.findOne(id);
   }
 
   @Post('runs')
   @RequirePermissions(PERMISSION_CODES.RECONCILIATION_RUN)
-  @ApiOperation({
-    summary: 'Create and execute a new reconciliation run',
-  })
+  @ApiOperation({ summary: 'Create and execute a new reconciliation run' })
+  @ApiBody({ type: CreateReconciliationRunDto })
+  @ApiResponse({ status: 201, description: 'Reconciliation run created and executed' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   createAndExecute(
     @Body() dto: CreateReconciliationRunDto,
     @Req() request: AdminRequest,
@@ -78,6 +97,12 @@ export class ReconciliationController {
   @Post('runs/:id/approve')
   @RequirePermissions(PERMISSION_CODES.RECONCILIATION_APPROVE)
   @ApiOperation({ summary: 'Approve a completed reconciliation run' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Run approved' })
+  @ApiResponse({ status: 400, description: 'Run is not in a completed state' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Run not found' })
   approve(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { notes?: string },

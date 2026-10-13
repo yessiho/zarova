@@ -3,6 +3,7 @@
 
 
 import {
+  Suspense,
   useEffect,
   useState,
 } from 'react';
@@ -110,7 +111,7 @@ function getSafeRedirectPath(
 // LOGIN PAGE
 // ============================================================
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
 
   const searchParams =
@@ -652,5 +653,13 @@ export default function LoginPage() {
 
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageContent />
+    </Suspense>
   );
 }

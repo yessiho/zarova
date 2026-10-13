@@ -30,22 +30,12 @@ export class AdminLedgerService {
       id: account.id,
       code: account.code,
       name: account.name,
-
-      // Prisma 8 generated field
-      type: account._type,
-
+      type: account.type,
       currency: account.currency,
       active: account.active,
-
-      totalDebit:
-        account.totalDebit?.toString() ?? '0',
-
-      totalCredit:
-        account.totalCredit?.toString() ?? '0',
-
-      balance:
-        account.balance?.toString() ?? '0',
-
+      totalDebit: account.totalDebit ?? '0',
+      totalCredit: account.totalCredit ?? '0',
+      balance: account.balance ?? '0',
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,
     }));
@@ -76,22 +66,12 @@ export class AdminLedgerService {
         id: account.id,
         code: account.code,
         name: account.name,
-
-        // Prisma 8 generated field
         type: account._type,
-
         currency: account.currency,
         active: account.active,
-
-        totalDebit:
-          result.totalDebit.toString(),
-
-        totalCredit:
-          result.totalCredit.toString(),
-
-        balance:
-          result.balance.toString(),
-
+        totalDebit: result.totalDebit.toString(),
+        totalCredit: result.totalCredit.toString(),
+        balance: result.balance.toString(),
         createdAt: account.createdAt,
         updatedAt: account.updatedAt,
       },

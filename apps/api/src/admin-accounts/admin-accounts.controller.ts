@@ -14,7 +14,10 @@ import type { Request } from 'express';
 
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
+  ApiParam,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -23,9 +26,7 @@ import { PERMISSION_CODES } from '../rbac/rbac.constants.js';
 import { RbacGuard } from '../rbac/rbac.guard.js';
 
 import { AdminAccountsService } from './admin-accounts.service.js';
-
 import { QueryAdminAccountsDto } from './dto/query-admin-accounts.dto.js';
-
 import { UpdateAdminAccountStatusDto } from './dto/update-admin-account-status.dto.js';
 
 interface AdminRequest extends Request {
@@ -44,66 +45,47 @@ export class AdminAccountsController {
     private readonly accountsService: AdminAccountsService,
   ) {}
 
-  /**
-   * GET /admin/accounts
-   */
   @Get()
-  @RequirePermissions(
-    PERMISSION_CODES.ACCOUNT_VIEW,
-  )
-  @ApiOperation({
-    summary:
-      'List customer wallet accounts for administrators',
-  })
-  findAll(
-    @Query()
-    query: QueryAdminAccountsDto,
-  ) {
+  @RequirePermissions(PERMISSION_CODES.ACCOUNT_VIEW)
+  @ApiOperation({ summary: 'List wallet accounts', description: 'Returns paginated customer wallet accounts with optional filters.' })
+  @ApiResponse({ status: 200, description: 'Paginated accounts list' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  findAll(@Query() query: QueryAdminAccountsDto) {
     return this.accountsService.findAll(query);
   }
 
-  /**
-   * GET /admin/accounts/:id
-   */
   @Get(':id')
-  @RequirePermissions(
-    PERMISSION_CODES.ACCOUNT_VIEW,
-  )
-  @ApiOperation({
-    summary:
-      'Get customer account details',
-  })
-  findOne(
-    @Param('id', ParseIntPipe)
-    id: number,
-  ) {
+  @RequirePermissions(PERMISSION_CODES.ACCOUNT_VIEW)
+  @ApiOperation({ summary: 'Get wallet account details', description: 'Returns full details for a single customer wallet account including balance and transaction history.' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Account details returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Account not found' })
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.accountsService.findOne(id);
   }
 
-  /**
-   * PATCH /admin/accounts/:id/status
-   */
   @Patch(':id/status')
-  @RequirePermissions(
-    PERMISSION_CODES.ACCOUNT_SUSPEND,
-  )
+  @RequirePermissions(PERMISSION_CODES.ACCOUNT_SUSPEND)
   @ApiOperation({
-    summary:
-      'Change customer account status',
+    summary: 'Change wallet account status',
+    description: 'Activates or suspends a customer wallet account. The action is audit-logged.',
   })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiBody({ type: UpdateAdminAccountStatusDto })
+  @ApiResponse({ status: 200, description: 'Account status updated' })
+  @ApiResponse({ status: 400, description: 'Invalid status value' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Account not found' })
   updateStatus(
-    @Param('id', ParseIntPipe)
-    id: number,
-
-    @Body()
-    body: UpdateAdminAccountStatusDto,
-
-    @Req()
-    request: AdminRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: UpdateAdminAccountStatusDto,
+    @Req() request: AdminRequest,
   ) {
-    const adminId = Number(
-      request.user?.id,
-    );
+    const adminId = Number(request.user?.id);
 
     return this.accountsService.updateStatus(
       id,

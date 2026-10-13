@@ -13,6 +13,16 @@ import {
 
 import type { Request } from 'express';
 
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+
 import { WalletsService } from './wallets.service.js';
 
 import { CreateWalletDto } from './dto/create-wallet.dto.js';
@@ -34,6 +44,8 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
+@ApiTags('Wallets')
+@ApiBearerAuth('access-token')
 @Controller('wallets')
 @UseGuards(JwtAuthGuard)
 export class WalletsController {
@@ -90,6 +102,11 @@ export class WalletsController {
    * ==========================================
    */
   @Post()
+  @ApiOperation({ summary: 'Create a new wallet for the authenticated user' })
+  @ApiBody({ type: CreateWalletDto })
+  @ApiResponse({ status: 201, description: 'Wallet created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   create(
     @Req()
     req: AuthenticatedRequest,
@@ -111,6 +128,9 @@ export class WalletsController {
    * ==========================================
    */
   @Get()
+  @ApiOperation({ summary: 'Get all wallets belonging to the authenticated user' })
+  @ApiResponse({ status: 200, description: 'List of user wallets returned successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   findMyWallets(
     @Req()
     req: AuthenticatedRequest,
@@ -133,6 +153,12 @@ export class WalletsController {
    * ==========================================
    */
   @Get('recipient')
+  @ApiOperation({ summary: 'Find a transfer recipient by account number' })
+  @ApiQuery({ name: 'accountNumber', required: true, type: String, description: 'Recipient wallet account number' })
+  @ApiResponse({ status: 200, description: 'Recipient found successfully' })
+  @ApiResponse({ status: 400, description: 'Missing or invalid account number' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Recipient not found' })
   findTransferRecipient(
     @Req()
     req: AuthenticatedRequest,
@@ -164,6 +190,13 @@ export class WalletsController {
    * ==========================================
    */
   @Get(':id/account')
+  @ApiOperation({ summary: 'Get account details for a specific wallet' })
+  @ApiParam({ name: 'id', type: Number, description: 'Wallet ID' })
+  @ApiResponse({ status: 200, description: 'Wallet account details returned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid wallet ID' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Wallet does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Wallet not found' })
   getWalletAccount(
     @Req()
     req: AuthenticatedRequest,
@@ -202,6 +235,13 @@ export class WalletsController {
    * ==========================================
    */
   @Get(':id')
+  @ApiOperation({ summary: 'Get a single wallet by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Wallet ID' })
+  @ApiResponse({ status: 200, description: 'Wallet returned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid wallet ID' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Wallet does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Wallet not found' })
   findOne(
     @Req()
     req: AuthenticatedRequest,
@@ -227,6 +267,14 @@ export class WalletsController {
    * ==========================================
    */
   @Post(':id/deposit')
+  @ApiOperation({ summary: 'Deposit money into a wallet' })
+  @ApiParam({ name: 'id', type: Number, description: 'Wallet ID to deposit into' })
+  @ApiBody({ type: DepositDto })
+  @ApiResponse({ status: 200, description: 'Deposit completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid deposit data or wallet ID' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Wallet does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Wallet not found' })
   deposit(
     @Req()
     req: AuthenticatedRequest,
@@ -255,6 +303,14 @@ export class WalletsController {
    * ==========================================
    */
   @Post(':id/withdraw')
+  @ApiOperation({ summary: 'Withdraw money from a wallet' })
+  @ApiParam({ name: 'id', type: Number, description: 'Wallet ID to withdraw from' })
+  @ApiBody({ type: WithdrawDto })
+  @ApiResponse({ status: 200, description: 'Withdrawal completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid withdrawal data, insufficient funds, or invalid wallet ID' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Wallet does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Wallet not found' })
   withdraw(
     @Req()
     req: AuthenticatedRequest,
@@ -283,6 +339,14 @@ export class WalletsController {
    * ==========================================
    */
   @Post(':id/transfer')
+  @ApiOperation({ summary: 'Transfer money from a wallet to a recipient wallet' })
+  @ApiParam({ name: 'id', type: Number, description: 'Source wallet ID' })
+  @ApiBody({ type: TransferDto })
+  @ApiResponse({ status: 200, description: 'Transfer completed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid transfer data, insufficient funds, or invalid wallet ID' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Source wallet does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Source or destination wallet not found' })
   transfer(
     @Req()
     req: AuthenticatedRequest,

@@ -114,18 +114,28 @@ model RolePermission {
 // ============================================================
 
 model User {
-  id                   Int          @id(map: "user_pkey") @default(autoincrement())
-  createdAt            Timestamptz  @default(now())
-  email                String       @unique(map: "user_email_key")
+  id                   Int            @id(map: "user_pkey") @default(autoincrement())
+  createdAt            Timestamptz    @default(now())
+  email                String         @unique(map: "user_email_key")
   firstName            String
   lastName             String
   passwordHash         String
-  status               String       @default("ACTIVE")
+  status               String         @default("ACTIVE")
   updatedAt            Timestamptz
   passwordResetExpires Timestamptz?
   passwordResetToken   String?
-  auditLogs            AuditLog[]
-  wallets              Wallet[]
+
+  // Two-Factor Authentication
+  twoFactorSecret      String?
+  twoFactorEnabled     Boolean        @default(false)
+  twoFactorBackupCodes String?
+
+  auditLogs              AuditLog[]
+  wallets                Wallet[]
+  notifications          Notification[]
+  webhooks               Webhook[]
+  paystackTransactions   PaystackTransaction[]
+  kycSubmission          KycSubmission?
 
   @@check(expression: "(status = ANY (ARRAY['ACTIVE'::text, 'SUSPENDED'::text, 'DEACTIVATED'::text]))", map: "user_status_check_5dec1c59")
   @@map("user")
@@ -480,4 +490,150 @@ model SystemSetting {
 
   @@index([category])
   @@map("systemSetting")
+}
+
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+
+model Notification {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  title     String
+  body      String
+  _type     String      @map("type")
+  read      Boolean     @default(false)
+  metadata  String?
+  createdAt Timestamptz @default(now())
+  updatedAt Timestamptz
+
+  user      User        @relation(fields:[userId], references:[id], map: "notification_userId_fkey")
+
+  @@index([userId], name: "notification_userId_idx")
+  @@index([read], name: "notification_read_idx")
+  @@index([userId, read], name: "notification_userId_read_idx")
+  @@check(expression: "(type = ANY (ARRAY['TRANSACTION'::text, 'SECURITY'::text, 'SYSTEM'::text, 'COMPLIANCE'::text, 'PAYMENT'::text]))", map: "notification_type_check")
+  @@map("notification")
+}
+
+
+// ============================================================
+// WEBHOOK
+// ============================================================
+
+model Webhook {
+  id          Int               @id @default(autoincrement())
+  userId      Int
+  url         String
+  secret      String
+  events      String
+  isActive    Boolean           @default(true)
+  description String?
+  createdAt   Timestamptz       @default(now())
+  updatedAt   Timestamptz
+
+  user        User              @relation(fields:[userId], references:[id], map: "webhook_userId_fkey")
+  deliveries  WebhookDelivery[]
+
+  @@index([userId], name: "webhook_userId_idx")
+  @@index([isActive], name: "webhook_isActive_idx")
+  @@map("webhook")
+}
+
+
+// ============================================================
+// PAYSTACK TRANSACTION
+// ============================================================
+
+model PaystackTransaction {
+  id                 Int         @id @default(autoincrement())
+  reference          String      @unique
+  userId             Int
+  walletId           Int?
+  amount             BigInt
+  currency           String      @default("NGN")
+  email              String
+  status             String      @default("PENDING")
+  accessCode         String?
+  authorizationUrl   String?
+  gatewayReference   String?
+  channel            String?
+  metadata           String?
+  failureReason      String?
+  paidAt             Timestamptz?
+  createdAt          Timestamptz @default(now())
+  updatedAt          Timestamptz
+
+  user               User        @relation(fields:[userId], references:[id], map: "paystackTransaction_userId_fkey")
+
+  @@index([userId], name: "paystackTransaction_userId_idx")
+  @@index([status], name: "paystackTransaction_status_idx")
+  @@index([reference], name: "paystackTransaction_reference_idx")
+  @@check(expression: "(status = ANY (ARRAY['PENDING'::text, 'SUCCESS'::text, 'FAILED'::text, 'ABANDONED'::text]))", map: "paystackTransaction_status_check")
+  @@map("paystackTransaction")
+}
+
+
+// ============================================================
+// KYC SUBMISSION
+// ============================================================
+
+model KycSubmission {
+  id                  Int          @id @default(autoincrement())
+  userId              Int          @unique
+  status              String       @default("PENDING")
+  tier                String       @default("BASIC")
+  firstName           String
+  lastName            String
+  dateOfBirth         String
+  nationality         String
+  documentType        String
+  documentNumber      String
+  documentFrontUrl    String
+  documentBackUrl     String?
+  selfieUrl           String?
+  address             String?
+  reviewedByAdminId   Int?
+  reviewNotes         String?
+  submittedAt         Timestamptz  @default(now())
+  reviewedAt          Timestamptz?
+  updatedAt           Timestamptz
+
+  user                User         @relation(fields:[userId], references:[id], map: "kycSubmission_userId_fkey")
+
+  @@index([status], name: "kycSubmission_status_idx")
+  @@index([tier], name: "kycSubmission_tier_idx")
+  @@check(expression: "(status = ANY (ARRAY['PENDING'::text, 'UNDER_REVIEW'::text, 'APPROVED'::text, 'REJECTED'::text]))", map: "kycSubmission_status_check")
+  @@check(expression: "(tier = ANY (ARRAY['BASIC'::text, 'STANDARD'::text, 'PREMIUM'::text]))", map: "kycSubmission_tier_check")
+  @@check(expression: "(\"documentType\" = ANY (ARRAY['PASSPORT'::text, 'NATIONAL_ID'::text, 'DRIVERS_LICENSE'::text]))", map: "kycSubmission_documentType_check")
+  @@map("kycSubmission")
+}
+
+
+// ============================================================
+// WEBHOOK DELIVERY
+// ============================================================
+
+model WebhookDelivery {
+  id           Int         @id @default(autoincrement())
+  webhookId    Int
+  event        String
+  payload      String
+  status       String      @default("PENDING")
+  attempt      Int         @default(1)
+  responseCode Int?
+  responseBody String?
+  error        String?
+  nextRetryAt  Timestamptz?
+  deliveredAt  Timestamptz?
+  createdAt    Timestamptz @default(now())
+
+  webhook      Webhook     @relation(fields:[webhookId], references:[id], map: "webhookDelivery_webhookId_fkey")
+
+  @@index([webhookId], name: "webhookDelivery_webhookId_idx")
+  @@index([status], name: "webhookDelivery_status_idx")
+  @@index([event], name: "webhookDelivery_event_idx")
+  @@check(expression: "(status = ANY (ARRAY['PENDING'::text, 'DELIVERED'::text, 'FAILED'::text, 'RETRYING'::text]))", map: "webhookDelivery_status_check")
+  @@map("webhookDelivery")
 }

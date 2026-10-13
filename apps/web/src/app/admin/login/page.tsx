@@ -2,6 +2,7 @@
 
 import {
   FormEvent,
+  Suspense,
   useEffect,
   useState,
 } from 'react';
@@ -195,7 +196,7 @@ function getErrorMessage(
    ADMIN LOGIN PAGE
    ============================================================ */
 
-export default function AdminLoginPage() {
+function AdminLoginContent() {
   const router = useRouter();
 
   const searchParams =
@@ -331,7 +332,7 @@ export default function AdminLoginPage() {
 
         if (
           payload.type === 'ADMIN' &&
-          user.type === 'ADMIN'
+          (user as AdminUser).type === 'ADMIN'
         ) {
           router.replace(
             redirectPath,
@@ -952,5 +953,13 @@ export default function AdminLoginPage() {
 
       </section>
     </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense>
+      <AdminLoginContent />
+    </Suspense>
   );
 }

@@ -5,12 +5,17 @@ import { useEffect, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
+  Eye,
+  EyeOff,
   KeyRound,
   Loader2,
+  QrCode,
   Save,
   ShieldCheck,
-  User,
+  ShieldOff,
+  X,
 } from 'lucide-react';
+import { User } from 'lucide-react';
 
 import { apiFetch } from '@/lib/api';
 import { updateAuthUser } from '@/lib/auth';
@@ -23,6 +28,17 @@ interface UserProfile {
   status: string;
   createdAt: string;
   updatedAt: string;
+}
+
+interface TwoFactorStatus {
+  enabled: boolean;
+  hasSecret: boolean;
+}
+
+interface TwoFactorSetup {
+  qrCode: string;
+  secret: string;
+  backupCodes: string[];
 }
 
 export default function SettingsPage() {
@@ -50,6 +66,19 @@ export default function SettingsPage() {
 
   const [passwordMessage, setPasswordMessage] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  /* 2FA state */
+  const [twoFactorStatus, setTwoFactorStatus] =
+    useState<TwoFactorStatus | null>(null);
+  const [twoFactorSetup, setTwoFactorSetup] =
+    useState<TwoFactorSetup | null>(null);
+  const [twoFactorStep, setTwoFactorStep] =
+    useState<'idle' | 'setup' | 'disable'>('idle');
+  const [twoFactorToken, setTwoFactorToken] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(false);
+  const [twoFactorMessage, setTwoFactorMessage] = useState('');
+  const [twoFactorError, setTwoFactorError] = useState('');
 
   /*
    * ==========================================
@@ -81,8 +110,18 @@ export default function SettingsPage() {
     }
   }
 
+  async function loadTwoFactorStatus() {
+    try {
+      const data = await apiFetch<TwoFactorStatus>('/auth/2fa/status');
+      setTwoFactorStatus(data);
+    } catch {
+      /* non-critical */
+    }
+  }
+
   useEffect(() => {
     loadProfile();
+    loadTwoFactorStatus();
   }, []);
 
   /*
@@ -219,6 +258,98 @@ export default function SettingsPage() {
       );
     } finally {
       setChangingPassword(false);
+    }
+  }
+
+  /* ==========================================
+   * 2FA — START SETUP
+   * ========================================== */
+  async function startTwoFactorSetup() {
+    try {
+      setTwoFactorLoading(true);
+      setTwoFactorError('');
+      setTwoFactorMessage('');
+
+      const data = await apiFetch<TwoFactorSetup>('/auth/2fa/setup', {
+        method: 'POST',
+      });
+
+      setTwoFactorSetup(data);
+      setTwoFactorStep('setup');
+      setTwoFactorToken('');
+    } catch (err) {
+      setTwoFactorError(
+        err instanceof Error ? err.message : 'Failed to start 2FA setup.',
+      );
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  }
+
+  /* ==========================================
+   * 2FA — CONFIRM ENABLE
+   * ========================================== */
+  async function confirmEnable(event: { preventDefault(): void }) {
+    event.preventDefault();
+
+    if (twoFactorToken.length !== 6) {
+      setTwoFactorError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+
+    try {
+      setTwoFactorLoading(true);
+      setTwoFactorError('');
+
+      await apiFetch('/auth/2fa/enable', {
+        method: 'POST',
+        body: JSON.stringify({ token: twoFactorToken }),
+      });
+
+      setTwoFactorStatus({ enabled: true, hasSecret: true });
+      setTwoFactorStep('idle');
+      setTwoFactorSetup(null);
+      setTwoFactorToken('');
+      setTwoFactorMessage('Two-factor authentication has been enabled.');
+    } catch (err) {
+      setTwoFactorError(
+        err instanceof Error ? err.message : 'Invalid code. Please try again.',
+      );
+    } finally {
+      setTwoFactorLoading(false);
+    }
+  }
+
+  /* ==========================================
+   * 2FA — CONFIRM DISABLE
+   * ========================================== */
+  async function confirmDisable(event: { preventDefault(): void }) {
+    event.preventDefault();
+
+    if (twoFactorToken.length !== 6) {
+      setTwoFactorError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+
+    try {
+      setTwoFactorLoading(true);
+      setTwoFactorError('');
+
+      await apiFetch('/auth/2fa/disable', {
+        method: 'POST',
+        body: JSON.stringify({ token: twoFactorToken }),
+      });
+
+      setTwoFactorStatus({ enabled: false, hasSecret: false });
+      setTwoFactorStep('idle');
+      setTwoFactorToken('');
+      setTwoFactorMessage('Two-factor authentication has been disabled.');
+    } catch (err) {
+      setTwoFactorError(
+        err instanceof Error ? err.message : 'Invalid code. Please try again.',
+      );
+    } finally {
+      setTwoFactorLoading(false);
     }
   }
 
@@ -554,6 +685,279 @@ export default function SettingsPage() {
             </div>
 
           </div>
+        </section>
+
+        {/* ======================================
+            TWO-FACTOR AUTHENTICATION
+        ====================================== */}
+        <section className="settings-card">
+
+          <div className="settings-card-header">
+            <div className={`settings-icon ${twoFactorStatus?.enabled ? 'security' : ''}`}>
+              {twoFactorStatus?.enabled
+                ? <ShieldCheck size={20} />
+                : <QrCode size={20} />}
+            </div>
+
+            <div>
+              <h2>Two-Factor Authentication</h2>
+              <p>
+                {twoFactorStatus?.enabled
+                  ? 'Your account is protected with 2FA.'
+                  : 'Add an extra layer of security with a TOTP authenticator.'}
+              </p>
+            </div>
+          </div>
+
+          {/* 2FA feedback */}
+          {twoFactorMessage && (
+            <div className="settings-success">
+              <CheckCircle2 size={18} />
+              <span>{twoFactorMessage}</span>
+            </div>
+          )}
+
+          {twoFactorError && (
+            <div className="settings-error">
+              <AlertCircle size={18} />
+              <span>{twoFactorError}</span>
+            </div>
+          )}
+
+          {/* ── IDLE: show status + action button ── */}
+          {twoFactorStep === 'idle' && (
+            <div className="twofa-idle">
+              <div className="twofa-status-row">
+                <span className={`twofa-badge ${twoFactorStatus?.enabled ? 'enabled' : 'disabled'}`}>
+                  {twoFactorStatus?.enabled ? 'Enabled' : 'Disabled'}
+                </span>
+                <p className="twofa-hint">
+                  {twoFactorStatus?.enabled
+                    ? 'Use Google Authenticator, Authy, or any TOTP app.'
+                    : 'Use Google Authenticator, Authy, or any TOTP app to protect your account.'}
+                </p>
+              </div>
+
+              {twoFactorStatus?.enabled ? (
+                <button
+                  type="button"
+                  className="twofa-disable-button"
+                  onClick={() => {
+                    setTwoFactorStep('disable');
+                    setTwoFactorToken('');
+                    setTwoFactorError('');
+                  }}
+                >
+                  <ShieldOff size={17} />
+                  Disable 2FA
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="settings-primary-button"
+                  onClick={() => void startTwoFactorSetup()}
+                  disabled={twoFactorLoading}
+                >
+                  {twoFactorLoading ? (
+                    <>
+                      <Loader2 size={17} className="button-spinner" />
+                      Setting up...
+                    </>
+                  ) : (
+                    <>
+                      <QrCode size={17} />
+                      Set Up 2FA
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── SETUP: show QR + backup codes + verify ── */}
+          {twoFactorStep === 'setup' && twoFactorSetup && (
+            <div className="twofa-setup">
+              <div className="twofa-steps-list">
+                <div className="twofa-step">
+                  <span className="twofa-step-num">1</span>
+                  <div>
+                    <strong>Scan the QR code</strong>
+                    <p>
+                      Open your authenticator app (Google Authenticator, Authy,
+                      etc.) and scan the code below.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="twofa-qr-wrapper">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={twoFactorSetup.qrCode}
+                  alt="2FA QR Code"
+                  width={180}
+                  height={180}
+                />
+              </div>
+
+              <div className="twofa-secret-row">
+                <span>Manual entry key:</span>
+                <code className="twofa-secret">
+                  {showSecret
+                    ? twoFactorSetup.secret
+                    : '•'.repeat(Math.min(twoFactorSetup.secret.length, 16))}
+                </code>
+                <button
+                  type="button"
+                  className="twofa-toggle-secret"
+                  onClick={() => setShowSecret((s) => !s)}
+                  aria-label={showSecret ? 'Hide key' : 'Show key'}
+                >
+                  {showSecret ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+
+              <div className="twofa-backup-section">
+                <strong>Save your backup codes</strong>
+                <p>
+                  Store these codes safely. Each can be used once if you lose
+                  access to your authenticator app.
+                </p>
+                <div className="twofa-backup-codes">
+                  {twoFactorSetup.backupCodes.map((code) => (
+                    <code key={code} className="twofa-backup-code">
+                      {code}
+                    </code>
+                  ))}
+                </div>
+              </div>
+
+              <form onSubmit={(e) => void confirmEnable(e)} className="twofa-verify-form">
+                <div className="twofa-steps-list">
+                  <div className="twofa-step">
+                    <span className="twofa-step-num">2</span>
+                    <div>
+                      <strong>Verify setup</strong>
+                      <p>Enter the 6-digit code from your authenticator app.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="twofa-token-row">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={twoFactorToken}
+                    onChange={(e) =>
+                      setTwoFactorToken(e.target.value.replace(/\D/g, '').slice(0, 6))
+                    }
+                    className="twofa-token-input"
+                    autoComplete="one-time-code"
+                    required
+                  />
+
+                  <button
+                    type="submit"
+                    className="settings-primary-button"
+                    disabled={twoFactorLoading || twoFactorToken.length !== 6}
+                  >
+                    {twoFactorLoading ? (
+                      <>
+                        <Loader2 size={17} className="button-spinner" />
+                        Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck size={17} />
+                        Enable 2FA
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="twofa-cancel-button"
+                    onClick={() => {
+                      setTwoFactorStep('idle');
+                      setTwoFactorSetup(null);
+                      setTwoFactorError('');
+                      setTwoFactorToken('');
+                    }}
+                    disabled={twoFactorLoading}
+                  >
+                    <X size={16} />
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* ── DISABLE: confirm with TOTP ── */}
+          {twoFactorStep === 'disable' && (
+            <form
+              onSubmit={(e) => void confirmDisable(e)}
+              className="twofa-setup"
+            >
+              <p className="twofa-hint">
+                Enter the 6-digit code from your authenticator app to confirm
+                disabling 2FA.
+              </p>
+
+              <div className="twofa-token-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={twoFactorToken}
+                  onChange={(e) =>
+                    setTwoFactorToken(e.target.value.replace(/\D/g, '').slice(0, 6))
+                  }
+                  className="twofa-token-input"
+                  autoComplete="one-time-code"
+                  required
+                />
+
+                <button
+                  type="submit"
+                  className="twofa-disable-button"
+                  disabled={twoFactorLoading || twoFactorToken.length !== 6}
+                >
+                  {twoFactorLoading ? (
+                    <>
+                      <Loader2 size={17} className="button-spinner" />
+                      Disabling...
+                    </>
+                  ) : (
+                    <>
+                      <ShieldOff size={17} />
+                      Confirm Disable
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="twofa-cancel-button"
+                  onClick={() => {
+                    setTwoFactorStep('idle');
+                    setTwoFactorError('');
+                    setTwoFactorToken('');
+                  }}
+                  disabled={twoFactorLoading}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
         </section>
 
       </div>

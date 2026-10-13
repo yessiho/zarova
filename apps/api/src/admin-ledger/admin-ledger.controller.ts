@@ -9,24 +9,15 @@ import {
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
-import {
-  RequirePermissions,
-} from '../rbac/rbac.decorator.js';
-
-import {
-  PERMISSION_CODES,
-} from '../rbac/rbac.constants.js';
-
-import {
-  RbacGuard,
-} from '../rbac/rbac.guard.js';
-
-import {
-  AdminLedgerService,
-} from './admin-ledger.service.js';
+import { RequirePermissions } from '../rbac/rbac.decorator.js';
+import { PERMISSION_CODES } from '../rbac/rbac.constants.js';
+import { RbacGuard } from '../rbac/rbac.guard.js';
+import { AdminLedgerService } from './admin-ledger.service.js';
 
 @ApiTags('Admin Ledger')
 @ApiBearerAuth('access-token')
@@ -37,40 +28,31 @@ export class AdminLedgerController {
     private readonly adminLedgerService: AdminLedgerService,
   ) {}
 
-  /* ==========================================================
-     GET /admin/ledger/accounts
-     ========================================================== */
-
   @Get('accounts')
-  @RequirePermissions(
-    PERMISSION_CODES.LEDGER_VIEW,
-  )
+  @RequirePermissions(PERMISSION_CODES.LEDGER_VIEW)
   @ApiOperation({
-    summary:
-      'Get all ledger accounts for administrators',
+    summary: 'List ledger accounts',
+    description: 'Returns all double-entry ledger accounts with their current balances. Used to verify the chart of accounts.',
   })
+  @ApiResponse({ status: 200, description: 'Ledger accounts list returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   findAll() {
     return this.adminLedgerService.findAll();
   }
 
-  /* ==========================================================
-     GET /admin/ledger/accounts/:id
-     ========================================================== */
-
   @Get('accounts/:id')
-  @RequirePermissions(
-    PERMISSION_CODES.LEDGER_VIEW,
-  )
+  @RequirePermissions(PERMISSION_CODES.LEDGER_VIEW)
   @ApiOperation({
-    summary:
-      'Get ledger account details for administrators',
+    summary: 'Get ledger account details',
+    description: 'Returns a single ledger account with its full entry history.',
   })
-  findOne(
-    @Param('id', ParseIntPipe)
-    id: number,
-  ) {
-    return this.adminLedgerService.findOne(
-      id,
-    );
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Ledger account detail returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Ledger account not found' })
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.adminLedgerService.findOne(id);
   }
 }

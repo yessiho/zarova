@@ -11,6 +11,9 @@ import {
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -34,9 +37,18 @@ export class AdminAuditController {
   @RequirePermissions(PERMISSION_CODES.AUDIT_LOG_VIEW)
   @ApiOperation({
     summary: 'List audit logs',
-    description:
-      'Returns paginated audit logs with optional filters.',
+    description: 'Returns paginated audit logs with optional filters for action, entity type, admin, user, or free-text search.',
   })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'action', required: false, type: String, description: 'Filter by action type (e.g. CUSTOMER_SUSPENDED)' })
+  @ApiQuery({ name: 'entity', required: false, type: String, description: 'Filter by entity type (e.g. User, Wallet)' })
+  @ApiQuery({ name: 'adminId', required: false, type: Number, description: 'Filter by acting admin ID' })
+  @ApiQuery({ name: 'userId', required: false, type: Number, description: 'Filter by affected user ID' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Full-text search across log details' })
+  @ApiResponse({ status: 200, description: 'Paginated audit log entries' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -60,6 +72,11 @@ export class AdminAuditController {
   @Get(':id')
   @RequirePermissions(PERMISSION_CODES.AUDIT_LOG_VIEW)
   @ApiOperation({ summary: 'Get audit log details' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Audit log entry returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Audit log not found' })
   async findOne(@Param('id', ParseIntPipe) id: number) {
     const logs =
       await this.prisma.client.orm.public.AuditLog.where({

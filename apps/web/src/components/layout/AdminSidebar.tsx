@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Activity,
+  BadgeCheck,
   BarChart3,
   BookOpen,
   ChevronRight,
@@ -86,6 +87,11 @@ const mainNavigation: NavigationItem[] = [
 ];
 
 const controlNavigation: NavigationItem[] = [
+  {
+    label: 'KYC Review',
+    href: '/admin/kyc',
+    icon: BadgeCheck,
+  },
   {
     label: 'Compliance',
     href: '/admin/compliance',

@@ -1106,11 +1106,11 @@ export default function DashboardPage() {
 
                     <div
                       className={getTransactionClass(
-                        transaction.type,
+                        transaction.type ?? '',
                       )}
                     >
                       {getTransactionIcon(
-                        transaction.type,
+                        transaction.type ?? '',
                       )}
                     </div>
 

@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:16
-    container_name: finflow-postgres
+    container_name: zarova-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: finflow
@@ -14,7 +14,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: finflow-redis
+    container_name: zarova-redis
     restart: unless-stopped
     ports:
       - '6379:6379'

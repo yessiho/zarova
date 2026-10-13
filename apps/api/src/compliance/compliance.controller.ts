@@ -15,7 +15,10 @@ import type { Request } from 'express';
 
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
+  ApiParam,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -43,11 +46,13 @@ export class ComplianceController {
     PERMISSION_CODES.COMPLIANCE_VIEW,
   )
   @ApiOperation({
-    summary:
-      'List compliance cases',
+    summary: 'List compliance cases',
     description:
       'Returns paginated compliance cases with filtering and dashboard statistics.',
   })
+  @ApiResponse({ status: 200, description: 'Paginated compliance cases' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   findAll(
     @Query()
     query: QueryComplianceCasesDto,
@@ -61,10 +66,12 @@ export class ComplianceController {
   @RequirePermissions(
     PERMISSION_CODES.COMPLIANCE_VIEW,
   )
-  @ApiOperation({
-    summary:
-      'Get compliance case details',
-  })
+  @ApiOperation({ summary: 'Get compliance case details' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Compliance case returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Case not found' })
   findOne(
     @Param(
       'id',
@@ -81,10 +88,12 @@ export class ComplianceController {
   @RequirePermissions(
     PERMISSION_CODES.COMPLIANCE_REVIEW,
   )
-  @ApiOperation({
-    summary:
-      'Create compliance case',
-  })
+  @ApiOperation({ summary: 'Create compliance case' })
+  @ApiBody({ type: CreateComplianceCaseDto })
+  @ApiResponse({ status: 201, description: 'Compliance case created' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   create(
     @Body()
     dto: CreateComplianceCaseDto,
@@ -106,10 +115,14 @@ export class ComplianceController {
   @RequirePermissions(
     PERMISSION_CODES.COMPLIANCE_REVIEW,
   )
-  @ApiOperation({
-    summary:
-      'Update compliance case',
-  })
+  @ApiOperation({ summary: 'Update compliance case' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiBody({ type: UpdateComplianceCaseDto })
+  @ApiResponse({ status: 200, description: 'Compliance case updated' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Case not found' })
   update(
     @Param(
       'id',
@@ -138,10 +151,12 @@ export class ComplianceController {
   @RequirePermissions(
     PERMISSION_CODES.COMPLIANCE_REVIEW,
   )
-  @ApiOperation({
-    summary:
-      'Assign compliance case',
-  })
+  @ApiOperation({ summary: 'Assign compliance case to the current admin' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Case assigned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Case not found' })
   assign(
     @Param(
       'id',
@@ -166,10 +181,12 @@ export class ComplianceController {
   @RequirePermissions(
     PERMISSION_CODES.COMPLIANCE_APPROVE,
   )
-  @ApiOperation({
-    summary:
-      'Escalate compliance case',
-  })
+  @ApiOperation({ summary: 'Escalate a compliance case' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 201, description: 'Case escalated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Case not found' })
   escalate(
     @Param(
       'id',

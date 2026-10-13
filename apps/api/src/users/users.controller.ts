@@ -14,7 +14,9 @@ import type { Request } from 'express';
 
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -50,6 +52,10 @@ export class UsersController {
   @ApiOperation({
     summary: 'Create a new user',
   })
+  @ApiBody({ type: CreateUserDto })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 409, description: 'Email already in use' })
   create(
     @Body()
     createUserDto: CreateUserDto,
@@ -68,6 +74,8 @@ export class UsersController {
   @ApiOperation({
     summary: 'Get all users',
   })
+  @ApiResponse({ status: 200, description: 'List of all users returned successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   findAll() {
     return this.usersService.findAll();
   }
@@ -116,6 +124,10 @@ export class UsersController {
   @ApiOperation({
     summary: 'Update authenticated user profile',
   })
+  @ApiBody({ type: UpdateProfileDto })
+  @ApiResponse({ status: 200, description: 'Profile updated successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   updateProfile(
     @Req()
     request: Request,
@@ -145,6 +157,10 @@ export class UsersController {
   @ApiOperation({
     summary: 'Change authenticated user password',
   })
+  @ApiBody({ type: ChangePasswordDto })
+  @ApiResponse({ status: 200, description: 'Password changed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid input data or incorrect current password' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   changePassword(
     @Req()
     request: Request,
@@ -172,6 +188,10 @@ export class UsersController {
   @ApiOperation({
     summary: 'Get user by ID',
   })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User found and returned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid ID format' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   findOne(
     @Param('id', ParseIntPipe)
     id: number,

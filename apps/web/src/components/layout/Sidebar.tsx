@@ -9,6 +9,8 @@ import {
 } from 'next/navigation';
 
 import {
+  BadgeCheck,
+  Bell,
   BookOpen,
   Landmark,
   LayoutDashboard,
@@ -57,6 +59,16 @@ const navigation = [
     name: 'Audit Logs',
     href: '/audit',
     icon: ShieldCheck,
+  },
+  {
+    name: 'KYC Verification',
+    href: '/kyc',
+    icon: BadgeCheck,
+  },
+  {
+    name: 'Notifications',
+    href: '/notifications',
+    icon: Bell,
   },
 ];
 

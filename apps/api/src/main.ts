@@ -5,15 +5,25 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    // Required for webhook signature verification (Paystack, etc.)
+    rawBody: true,
+  });
 
   /*
    * ==========================================
    * CORS CONFIGURATION
    * ==========================================
    */
+  const allowedOrigins = [
+    'http://localhost:3000',
+    ...(process.env['FRONTEND_URL']
+      ? [process.env['FRONTEND_URL']]
+      : []),
+  ];
+
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: allowedOrigins,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,

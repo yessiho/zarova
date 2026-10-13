@@ -10,6 +10,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { TransactionsService } from './transactions.service.js';
 
@@ -20,6 +29,8 @@ type TransactionStatus =
 
 type Currency = 'NGN' | 'USD' | 'EUR' | 'GBP';
 
+@ApiTags('Transactions')
+@ApiBearerAuth('access-token')
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
 export class TransactionsController {
@@ -33,6 +44,9 @@ export class TransactionsController {
    * ==========================================
    */
   @Get('summary')
+  @ApiOperation({ summary: 'Get a dashboard summary of transactions for the authenticated user' })
+  @ApiResponse({ status: 200, description: 'Transaction summary returned successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getSummary(@Req() req: any) {
     return this.transactionsService.getSummary(req.user.id);
   }
@@ -46,6 +60,11 @@ export class TransactionsController {
    * ==========================================
    */
   @Get('recent')
+  @ApiOperation({ summary: 'Get the most recent transactions for the authenticated user' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of recent transactions to return (1–20, default 5)' })
+  @ApiResponse({ status: 200, description: 'Recent transactions returned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid limit value' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getRecentTransactions(
     @Req() req: any,
 
@@ -78,6 +97,11 @@ export class TransactionsController {
    * ==========================================
    */
   @Get('analytics')
+  @ApiOperation({ summary: 'Get transaction analytics for the authenticated user over a given number of days' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to analyse (1–365, default 30)' })
+  @ApiResponse({ status: 200, description: 'Transaction analytics returned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid days value' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getAnalytics(
     @Req() req: any,
 
@@ -126,6 +150,18 @@ export class TransactionsController {
    * ==========================================
    */
   @Get()
+  @ApiOperation({ summary: 'Get all transactions for the authenticated user with filtering and pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page, 1–100 (default 10)' })
+  @ApiQuery({ name: 'type', required: false, type: String, description: 'Filter by transaction type: DEPOSIT | WITHDRAWAL | TRANSFER' })
+  @ApiQuery({ name: 'status', required: false, type: String, description: 'Filter by status: PENDING | PROCESSING | COMPLETED | FAILED | REVERSED' })
+  @ApiQuery({ name: 'currency', required: false, type: String, description: 'Filter by currency: NGN | USD | EUR | GBP' })
+  @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by transaction reference' })
+  @ApiQuery({ name: 'startDate', required: false, type: String, description: 'Start date filter (ISO 8601, e.g. 2026-09-01)' })
+  @ApiQuery({ name: 'endDate', required: false, type: String, description: 'End date filter (ISO 8601, e.g. 2026-09-30)' })
+  @ApiResponse({ status: 200, description: 'Paginated list of transactions returned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid query parameters' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(
     @Req() req: any,
 
@@ -309,6 +345,12 @@ export class TransactionsController {
    * ==========================================
    */
   @Get('reference/:reference')
+  @ApiOperation({ summary: 'Get a transaction by its reference number' })
+  @ApiParam({ name: 'reference', type: String, description: 'Transaction reference string (e.g. TXN-12345)' })
+  @ApiResponse({ status: 200, description: 'Transaction found and returned successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Transaction does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
   async findByReference(
     @Req() req: any,
 
@@ -336,6 +378,13 @@ export class TransactionsController {
    * ==========================================
    */
   @Post(':id/reverse')
+  @ApiOperation({ summary: 'Reverse a transaction by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Transaction ID to reverse' })
+  @ApiResponse({ status: 200, description: 'Transaction reversed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid transaction ID or transaction cannot be reversed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Transaction does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
   async reverse(
     @Req() req: any,
 
@@ -356,6 +405,13 @@ export class TransactionsController {
    * ==========================================
    */
   @Get(':id')
+  @ApiOperation({ summary: 'Get a transaction by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Transaction ID' })
+  @ApiResponse({ status: 200, description: 'Transaction found and returned successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid transaction ID' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Transaction does not belong to the authenticated user' })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
   async findOne(
     @Req() req: any,
 

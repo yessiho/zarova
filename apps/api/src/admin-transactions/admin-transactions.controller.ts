@@ -6,9 +6,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiParam,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -30,18 +33,22 @@ export class AdminTransactionsController {
 
   @Get()
   @RequirePermissions(PERMISSION_CODES.TRANSACTION_VIEW)
-  @ApiOperation({
-    summary: 'List customer transactions for administrators',
-  })
+  @ApiOperation({ summary: 'List transactions', description: 'Returns paginated financial transactions across all customers, with optional filtering.' })
+  @ApiResponse({ status: 200, description: 'Paginated transaction list' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   findAll(@Query() query: QueryAdminTransactionsDto) {
     return this.transactionsService.findAll(query);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSION_CODES.TRANSACTION_VIEW)
-  @ApiOperation({
-    summary: 'Get customer transaction details',
-  })
+  @ApiOperation({ summary: 'Get transaction details' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Transaction detail returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Transaction not found' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.transactionsService.findOne(id);
   }

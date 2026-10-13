@@ -9,10 +9,15 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+
 import type { Request } from 'express';
+
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
+  ApiParam,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 
@@ -40,18 +45,22 @@ export class AdminCustomersController {
 
   @Get()
   @RequirePermissions(PERMISSION_CODES.CUSTOMER_VIEW)
-  @ApiOperation({
-    summary: 'List customers for administrators',
-  })
+  @ApiOperation({ summary: 'List customers', description: 'Returns paginated customer accounts with optional filtering by status, search, and date range.' })
+  @ApiResponse({ status: 200, description: 'Paginated customer list' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
   findAll(@Query() query: QueryAdminCustomersDto) {
     return this.customersService.findAll(query);
   }
 
   @Get(':id')
   @RequirePermissions(PERMISSION_CODES.CUSTOMER_VIEW)
-  @ApiOperation({
-    summary: 'Get customer details for administrators',
-  })
+  @ApiOperation({ summary: 'Get customer details', description: 'Returns the full profile of a customer including wallets and recent transactions.' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Customer details returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Customer not found' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.customersService.findOne(id);
   }
@@ -59,8 +68,16 @@ export class AdminCustomersController {
   @Patch(':id/status')
   @RequirePermissions(PERMISSION_CODES.CUSTOMER_SUSPEND)
   @ApiOperation({
-    summary: 'Change customer status',
+    summary: 'Change customer account status',
+    description: 'Activate, suspend, or deactivate a customer account. The action is audit-logged.',
   })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', enum: ['ACTIVE', 'SUSPENDED', 'DEACTIVATED'] } }, required: ['status'] } })
+  @ApiResponse({ status: 200, description: 'Customer status updated' })
+  @ApiResponse({ status: 400, description: 'Invalid status value' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  @ApiResponse({ status: 404, description: 'Customer not found' })
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED' },
