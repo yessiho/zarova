@@ -17,6 +17,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+import ZarovaLogo from '@/components/ui/ZarovaLogo';
+
 import { apiFetch } from '@/lib/api';
 
 // ============================================================
@@ -182,10 +184,7 @@ function ResetPasswordContent() {
 
         <section className="auth-card">
           <Link href="/login" className="auth-logo">
-            <div className="auth-logo-icon">
-              <Landmark size={22} />
-            </div>
-            Zarova
+            <ZarovaLogo size={28} showText variant="dark" />
           </Link>
 
           <div className="auth-success">

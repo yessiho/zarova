@@ -637,3 +637,37 @@ model WebhookDelivery {
   @@check(expression: "(status = ANY (ARRAY['PENDING'::text, 'DELIVERED'::text, 'FAILED'::text, 'RETRYING'::text]))", map: "webhookDelivery_status_check")
   @@map("webhookDelivery")
 }
+
+// ============================================================
+// BILL PAYMENT
+// ============================================================
+
+model BillPayment {
+  id            Int         @id @default(autoincrement())
+  reference     String      @unique
+  userId        Int
+  walletId      Int
+  transactionId Int?
+  billType      String
+  provider      String
+  recipient     String
+  amount        BigInt
+  currency      String      @default("NGN")
+  status        String      @default("PENDING")
+  note          String?
+  metadata      String?
+  createdAt     Timestamptz @default(now())
+  updatedAt     Timestamptz
+
+  @@index([userId],    name: "billPayment_userId_idx")
+  @@index([walletId],  name: "billPayment_walletId_idx")
+  @@index([status],    name: "billPayment_status_idx")
+  @@index([billType],  name: "billPayment_billType_idx")
+  @@index([createdAt], name: "billPayment_createdAt_idx")
+
+  @@check(expression: "(\"billType\" = ANY (ARRAY['AIRTIME'::text, 'DATA'::text, 'ELECTRICITY'::text, 'CABLE_TV'::text, 'INTERNET'::text]))", map: "billPayment_billType_check")
+  @@check(expression: "(status = ANY (ARRAY['PENDING'::text, 'PROCESSING'::text, 'COMPLETED'::text, 'FAILED'::text]))", map: "billPayment_status_check")
+  @@check(expression: "(currency = ANY (ARRAY['NGN'::text, 'USD'::text, 'EUR'::text, 'GBP'::text]))", map: "billPayment_currency_check")
+  @@check(expression: "(amount > 0)", map: "billPayment_amount_check")
+  @@map("billPayment")
+}

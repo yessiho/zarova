@@ -15,12 +15,13 @@ import {
 import {
   Eye,
   EyeOff,
-  Landmark,
   Loader2,
   Lock,
   Mail,
   ShieldCheck,
 } from 'lucide-react';
+
+import ZarovaLogo from '@/components/ui/ZarovaLogo';
 
 import { apiFetch } from '@/lib/api';
 
@@ -661,13 +662,7 @@ function AdminLoginContent() {
 
         <div className="admin-login-brand">
 
-          <div
-            className="
-              admin-login-brand-icon
-            "
-          >
-            <Landmark size={23} />
-          </div>
+          <ZarovaLogo size={36} showText={false} />
 
           <div>
             <strong>

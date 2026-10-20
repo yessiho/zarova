@@ -11,11 +11,12 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
-  Landmark,
   Loader2,
   Mail,
   ShieldCheck,
 } from 'lucide-react';
+
+import ZarovaLogo from '@/components/ui/ZarovaLogo';
 
 import { apiFetch } from '@/lib/api';
 
@@ -166,13 +167,7 @@ export default function ForgotPasswordPage() {
           className="auth-logo"
         >
 
-          <div className="auth-logo-icon">
-            <Landmark size={24} />
-          </div>
-
-          <span>
-            Zarova
-          </span>
+          <ZarovaLogo size={28} showText variant="dark" />
 
         </Link>
 

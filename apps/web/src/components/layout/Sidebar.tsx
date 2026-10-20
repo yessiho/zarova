@@ -10,16 +10,20 @@ import {
 
 import {
   BadgeCheck,
+  BarChart2,
   Bell,
   BookOpen,
-  Landmark,
   LayoutDashboard,
   LogOut,
+  Phone,
   ReceiptText,
+  Send,
   Settings,
   ShieldCheck,
   WalletCards,
 } from 'lucide-react';
+
+import ZarovaLogo from '@/components/ui/ZarovaLogo';
 
 import type { User } from '@/types';
 
@@ -46,9 +50,24 @@ const navigation = [
     icon: WalletCards,
   },
   {
+    name: 'Send Money',
+    href: '/send',
+    icon: Send,
+  },
+  {
+    name: 'Pay Bills',
+    href: '/bills',
+    icon: Phone,
+  },
+  {
     name: 'Transactions',
     href: '/transactions',
     icon: ReceiptText,
+  },
+  {
+    name: 'Analytics',
+    href: '/analytics',
+    icon: BarChart2,
   },
   {
     name: 'Ledger',
@@ -299,16 +318,7 @@ export default function Sidebar() {
       ====================================================== */}
 
       <div className="sidebar-brand">
-        <div className="brand-icon">
-          <Landmark
-            size={24}
-            strokeWidth={2.2}
-          />
-        </div>
-
-        <span className="brand-name">
-          Zarova
-        </span>
+        <ZarovaLogo size={34} showText variant="light" />
       </div>
 
       {/* ======================================================

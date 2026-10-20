@@ -9,7 +9,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  Landmark,
   Loader2,
   Lock,
   Mail,
@@ -18,6 +17,8 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
+
+import ZarovaLogo from '@/components/ui/ZarovaLogo';
 
 import { apiFetch } from '@/lib/api';
 
@@ -197,7 +198,7 @@ export default function RegisterPage() {
           <div className="register-brand-content">
 
             <div className="register-brand-logo">
-              <Landmark size={30} />
+              <ZarovaLogo size={42} showText={false} />
             </div>
 
             <div className="register-brand-name">
@@ -235,7 +236,7 @@ export default function RegisterPage() {
 
               <div className="register-feature">
                 <div className="register-feature-icon">
-                  <Landmark size={18} />
+                  <ShieldCheck size={18} />
                 </div>
 
                 <div>
@@ -276,11 +277,7 @@ export default function RegisterPage() {
 
             {/* MOBILE BRAND */}
             <div className="register-mobile-brand">
-              <div className="register-mobile-logo">
-                <Landmark size={24} />
-              </div>
-
-              <span>Zarova</span>
+              <ZarovaLogo size={32} showText variant="dark" />
             </div>
 
             {/* HEADING */}

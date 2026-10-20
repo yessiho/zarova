@@ -19,12 +19,14 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  Landmark,
   Loader2,
   Lock,
   Mail,
   ShieldCheck,
+  Wallet2,
 } from 'lucide-react';
+
+import ZarovaLogo from '@/components/ui/ZarovaLogo';
 
 import { apiFetch } from '@/lib/api';
 
@@ -387,7 +389,7 @@ function LoginPageContent() {
           <div className="login-brand-content">
 
             <div className="login-brand-logo">
-              <Landmark size={30} />
+              <ZarovaLogo size={42} showText={false} />
             </div>
 
             <div className="login-brand-name">
@@ -428,7 +430,7 @@ function LoginPageContent() {
 
               <div className="login-feature">
                 <div className="login-feature-icon">
-                  <Landmark size={18} />
+                  <Wallet2 size={18} />
                 </div>
 
                 <div>
@@ -462,13 +464,7 @@ function LoginPageContent() {
             {/* MOBILE BRAND */}
 
             <div className="login-mobile-brand">
-              <div className="login-mobile-logo">
-                <Landmark size={24} />
-              </div>
-
-              <span>
-                Zarova
-              </span>
+              <ZarovaLogo size={32} showText variant="dark" />
             </div>
 
             {/* HEADING */}

@@ -1,9 +1,9 @@
-
 'use client';
 
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 
@@ -14,6 +14,9 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
+  BadgeCheck,
+  Bell,
+  BookOpen,
   CircleDollarSign,
   Clock3,
   Landmark,
@@ -24,11 +27,22 @@ import {
   Wallet,
 } from 'lucide-react';
 
-import { apiFetch } from '@/lib/api';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
-// ============================================================
-// TYPES
-// ============================================================
+import { apiFetch } from '@/lib/api';
+import { getAuthUser } from '@/lib/auth';
+
+/* ============================================================
+   TYPES
+   ============================================================ */
 
 interface WalletAccount {
   id: number;
@@ -51,10 +65,6 @@ interface WalletData {
   status: string;
   createdAt: string;
   updatedAt: string;
-
-  /*
-   * Account can be null for older wallets.
-   */
   account: WalletAccount | null;
 }
 
@@ -76,1106 +86,730 @@ interface DashboardListResponse<T> {
   results?: T[];
 }
 
-function getTransactionType(
-  transaction: Transaction,
-): string {
-  return (
-    transaction.type ??
-    transaction._type ??
-    'TRANSACTION'
-  );
+/* ============================================================
+   HELPERS
+   ============================================================ */
+
+function getTransactionType(tx: Transaction): string {
+  return tx.type ?? tx._type ?? 'TRANSACTION';
 }
 
 function normalizeList<T>(
-  response:
-    | T[]
-    | DashboardListResponse<T>
-    | unknown,
+  response: T[] | DashboardListResponse<T> | unknown,
 ): T[] {
-  if (Array.isArray(response)) {
-    return response;
-  }
+  if (Array.isArray(response)) return response;
 
-  if (
-    typeof response === 'object' &&
-    response !== null
-  ) {
-    const value =
-      response as DashboardListResponse<T>;
+  if (typeof response === 'object' && response !== null) {
+    const v = response as DashboardListResponse<T>;
 
-    if (Array.isArray(value.data)) {
-      return value.data;
-    }
-
-    if (Array.isArray(value.items)) {
-      return value.items;
-    }
-
-    if (Array.isArray(value.results)) {
-      return value.results;
-    }
+    if (Array.isArray(v.data)) return v.data;
+    if (Array.isArray(v.items)) return v.items;
+    if (Array.isArray(v.results)) return v.results;
   }
 
   return [];
 }
 
-function formatStatus(value: string): string {
-  return value
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\\b\\w/g, (letter) =>
-      letter.toUpperCase(),
-    );
+function formatAmount(amount: string | number, currency: string): string {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return `${currency} 0.00`;
+
+  try {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(n);
+  } catch {
+    return `${currency} ${n.toLocaleString('en-NG')}`;
+  }
 }
 
-// ============================================================
-// COMPONENT
-// ============================================================
+function formatDate(date: string): string {
+  try {
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return date;
+
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60_000);
+
+    if (diffMin < 1) return 'Just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+
+    return new Intl.DateTimeFormat('en-NG', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(d);
+  } catch {
+    return date;
+  }
+}
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function txStatusClass(status: string): string {
+  const s = status.toLowerCase();
+
+  if (s === 'completed' || s === 'success') return 'tx-status tx-status-success';
+  if (s === 'pending') return 'tx-status tx-status-pending';
+  if (s === 'failed' || s === 'reversed') return 'tx-status tx-status-failed';
+
+  return 'tx-status tx-status-default';
+}
+
+/* ============================================================
+   SPARKLINE DATA — built from wallet balances for decoration
+   ============================================================ */
+
+function buildSparkData(total: number) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const now = new Date();
+  const base = total > 0 ? total * 0.4 : 50_000;
+
+  return Array.from({ length: 8 }, (_, i) => {
+    const monthIdx = (now.getMonth() - 7 + i + 12) % 12;
+    const wave = Math.sin((i / 7) * Math.PI) * base * 0.5;
+    const noise = (Math.cos(i * 2.7) * 0.2 + 0.9) * base;
+
+    return {
+      month: months[monthIdx],
+      balance: Math.max(0, Math.round(base * 0.5 + wave + noise)),
+    };
+  });
+}
+
+/* ============================================================
+   CUSTOM CHART TOOLTIP
+   ============================================================ */
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { value: number; name: string }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="dash-chart-tooltip">
+      <p className="dash-chart-tooltip-label">{label}</p>
+      <p className="dash-chart-tooltip-value">
+        ₦{payload[0].value.toLocaleString('en-NG')}
+      </p>
+    </div>
+  );
+}
+
+/* ============================================================
+   PAGE
+   ============================================================ */
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [wallets, setWallets] =
-    useState<WalletData[]>([]);
+  const authUser = getAuthUser() as { firstName?: string; lastName?: string } | null;
+  const firstName = authUser?.firstName ?? 'there';
 
-  const [transactions, setTransactions] =
-    useState<Transaction[]>([]);
+  const [wallets, setWallets] = useState<WalletData[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
 
-  const [loading, setLoading] =
-    useState(true);
+  /* ----------------------------------------------------------
+     LOAD
+     ---------------------------------------------------------- */
 
-  const [refreshing, setRefreshing] =
-    useState(false);
+  const loadDashboard = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
 
-  const [error, setError] =
-    useState('');
+      setError('');
 
-  // ============================================================
-  // ERROR MESSAGE HELPER
-  // ============================================================
+      const [walletsRes, txRes] = await Promise.all([
+        apiFetch<WalletData[] | DashboardListResponse<WalletData>>('/wallets'),
+        apiFetch<Transaction[] | DashboardListResponse<Transaction>>(
+          '/transactions/recent?limit=8',
+        ),
+      ]);
 
-  const getErrorMessage = (
-    error: unknown,
-  ): string => {
-    if (error instanceof Error) {
-      return error.message;
+      setWallets(normalizeList<WalletData>(walletsRes));
+      setTransactions(normalizeList<Transaction>(txRes));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unable to load dashboard.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    return 'Unable to load dashboard.';
-  };
-
-  // ============================================================
-  // LOAD DASHBOARD
-  //
-  // IMPORTANT:
-  //
-  // Authentication is NOT checked manually here.
-  //
-  // AuthGuard protects this route.
-  //
-  // apiFetch automatically attaches:
-  //
-  // Authorization: Bearer <token>
-  //
-  // api.ts centrally handles 401 Unauthorized responses.
-  // ============================================================
-
-  const loadDashboard = useCallback(
-    async (isRefresh = false) => {
-      try {
-        if (isRefresh) {
-          setRefreshing(true);
-        } else {
-          setLoading(true);
-        }
-
-        setError('');
-
-        /*
-         * Load wallets and transactions simultaneously.
-         */
-        const [
-          walletsResponse,
-          transactionsResponse,
-        ] = await Promise.all([
-          apiFetch<
-            WalletData[] | DashboardListResponse<WalletData>
-          >('/wallets'),
-
-          apiFetch<
-            Transaction[] | DashboardListResponse<Transaction>
-          >('/transactions/recent?limit=5'),
-        ]);
-
-        /*
-         * Protect against unexpected API responses.
-         */
-        setWallets(
-          normalizeList<WalletData>(
-            walletsResponse,
-          ),
-        );
-
-        setTransactions(
-          normalizeList<Transaction>(
-            transactionsResponse,
-          ),
-        );
-      } catch (error: unknown) {
-        console.error(
-          'Dashboard loading error:',
-          error,
-        );
-
-        /*
-         * Do NOT manually clear authentication here.
-         *
-         * api.ts handles HTTP 401 responses centrally.
-         *
-         * AuthGuard handles redirecting users after the
-         * authentication session is cleared.
-         */
-        setError(
-          getErrorMessage(error),
-        );
-      } finally {
-        setLoading(false);
-
-        setRefreshing(false);
-      }
-    },
-    [],
-  );
-
-  // ============================================================
-  // INITIAL LOAD
-  // ============================================================
+  }, []);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
 
-  // ============================================================
-  // FORMAT AMOUNT
-  // ============================================================
+  /* ----------------------------------------------------------
+     CALCULATIONS
+     ---------------------------------------------------------- */
 
-  function formatAmount(
-    amount: string | number,
-    currency: string,
-  ) {
-    const numericAmount =
-      Number(amount);
-
-    if (!Number.isFinite(numericAmount)) {
-      return `${currency} 0.00`;
-    }
-
-    try {
-      return new Intl.NumberFormat(
-        'en-NG',
-        {
-          style: 'currency',
-          currency,
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        },
-      ).format(numericAmount);
-    } catch {
-      return `${currency} ${numericAmount.toLocaleString(
-        'en-NG',
-      )}`;
-    }
-  }
-
-  // ============================================================
-  // FORMAT NUMBER
-  // ============================================================
-
-  function formatNumber(amount: number) {
-    if (!Number.isFinite(amount)) {
-      return '0.00';
-    }
-
-    return new Intl.NumberFormat(
-      'en-NG',
-      {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      },
-    ).format(amount);
-  }
-
-  // ============================================================
-  // FORMAT DATE
-  // ============================================================
-
-  function formatDate(date: string) {
-    try {
-      const parsedDate =
-        new Date(date);
-
-      if (
-        Number.isNaN(
-          parsedDate.getTime(),
-        )
-      ) {
-        return date;
-      }
-
-      return new Intl.DateTimeFormat(
-        'en-NG',
-        {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        },
-      ).format(parsedDate);
-    } catch {
-      return date;
-    }
-  }
-
-  // ============================================================
-  // TRANSACTION ICON
-  // ============================================================
-
-  function getTransactionIcon(
-    type: string,
-  ) {
-    switch (type) {
-      case 'DEPOSIT':
-        return (
-          <ArrowDownLeft size={19} />
-        );
-
-      case 'WITHDRAWAL':
-        return (
-          <ArrowUpRight size={19} />
-        );
-
-      case 'TRANSFER':
-        return (
-          <RefreshCcw size={18} />
-        );
-
-      default:
-        return (
-          <Activity size={19} />
-        );
-    }
-  }
-
-  // ============================================================
-  // TRANSACTION CLASS
-  // ============================================================
-
-  function getTransactionClass(
-    type: string,
-  ) {
-    switch (type) {
-      case 'DEPOSIT':
-        return 'dashboard-transaction-icon deposit';
-
-      case 'WITHDRAWAL':
-        return 'dashboard-transaction-icon withdrawal';
-
-      case 'TRANSFER':
-        return 'dashboard-transaction-icon transfer';
-
-      default:
-        return 'dashboard-transaction-icon';
-    }
-  }
-
-  // ============================================================
-  // STATUS CLASS
-  // ============================================================
-
-  function getStatusClass(
-    status: string,
-  ) {
-    return status.toLowerCase();
-  }
-
-  // ============================================================
-  // CALCULATIONS
-  // ============================================================
-
-  const balancesByCurrency =
-    wallets.reduce(
-      (balances, wallet) => {
-        const balance =
-          Number(wallet.balance);
-
-        if (Number.isFinite(balance)) {
-          balances.set(
-            wallet.currency,
-            (balances.get(wallet.currency) ?? 0) +
-              balance,
-          );
-        }
-
-        return balances;
-      },
-      new Map<string, number>(),
-    );
-
-  const currencyBalances = Array.from(
-    balancesByCurrency.entries(),
-  ).sort(([a], [b]) =>
-    a.localeCompare(b),
+  const balancesByCurrency = useMemo(() =>
+    wallets.reduce((acc, w) => {
+      const b = Number(w.balance);
+      if (Number.isFinite(b)) acc.set(w.currency, (acc.get(w.currency) ?? 0) + b);
+      return acc;
+    }, new Map<string, number>()),
+    [wallets],
   );
 
-  const primaryBalance =
-    currencyBalances[0];
+  const currencyBalances = useMemo(
+    () => Array.from(balancesByCurrency.entries()).sort(([a], [b]) => a.localeCompare(b)),
+    [balancesByCurrency],
+  );
 
-  const activeWallets =
-    wallets.filter(
-      (wallet) =>
-        wallet.status === 'ACTIVE',
-    ).length;
+  const primaryBalance = currencyBalances[0];
+  const activeWallets = wallets.filter((w) => w.status === 'ACTIVE').length;
+  const totalAccounts = wallets.filter((w) => w.account !== null).length;
 
-  const totalAccounts =
-    wallets.filter(
-      (wallet) =>
-        wallet.account !== null,
-    ).length;
+  const chartData = useMemo(
+    () => buildSparkData(primaryBalance?.[1] ?? 0),
+    [primaryBalance],
+  );
 
-  // ============================================================
-  // LOADING SCREEN
-  // ============================================================
+  /* ----------------------------------------------------------
+     LOADING
+     ---------------------------------------------------------- */
 
   if (loading) {
     return (
       <div className="dashboard-loading-page">
         <div className="dashboard-loading-content">
-
           <div className="dashboard-loader-logo">
             <Landmark size={26} />
           </div>
-
           <div className="dashboard-loader-spinner" />
-
-          <p>
-            Loading your financial overview...
-          </p>
-
+          <p>Loading your financial overview...</p>
         </div>
       </div>
     );
   }
 
-  // ============================================================
-  // DASHBOARD
-  // ============================================================
+  /* ----------------------------------------------------------
+     RENDER
+     ---------------------------------------------------------- */
 
   return (
-    <main className="dashboard-page">
+    <main className="dash-page">
 
       {/* ======================================================
-          PAGE HEADER
-      ====================================================== */}
+          GREETING HEADER
+          ====================================================== */}
 
-      <section className="dashboard-header">
-
-        <div className="dashboard-header-content">
-
-          <div className="dashboard-header-badge">
-            <Activity size={15} />
-            Financial Overview
-          </div>
-
-          <h1>Dashboard</h1>
-
-          <p>
-            Monitor your wallets, virtual accounts,
-            transactions, and financial activity in
-            one place.
+      <header className="dash-greeting">
+        <div className="dash-greeting-text">
+          <p className="dash-greeting-sub">{greeting()},</p>
+          <h1 className="dash-greeting-name">{firstName}.</h1>
+          <p className="dash-greeting-caption">
+            Here&apos;s a quick snapshot of your account activity.
           </p>
-
         </div>
 
-        <button
-          type="button"
-          className="dashboard-refresh-button"
-          onClick={() =>
-            void loadDashboard(true)
-          }
-          disabled={refreshing}
-        >
-          <RefreshCcw
-            size={17}
-            className={
-              refreshing
-                ? 'refresh-icon spinning'
-                : 'refresh-icon'
-            }
-          />
-
-          {refreshing
-            ? 'Refreshing...'
-            : 'Refresh'}
-        </button>
-
-      </section>
-
-      {/* ======================================================
-          ERROR MESSAGE
-      ====================================================== */}
-
-      {error && (
-        <div
-          className="dashboard-error"
-          role="alert"
-        >
-          <strong>
-            Something went wrong.
-          </strong>
-
-          <span>{error}</span>
+        <div className="dash-header-actions">
+          <button
+            type="button"
+            className="dash-action-pill"
+            onClick={() => router.push('/wallets')}
+          >
+            <Plus size={15} />
+            Fund Wallet
+          </button>
 
           <button
             type="button"
-            onClick={() =>
-              void loadDashboard(true)
-            }
+            className="dash-refresh-btn"
+            onClick={() => void loadDashboard(true)}
             disabled={refreshing}
+            title="Refresh dashboard"
           >
+            <RefreshCcw
+              size={17}
+              className={refreshing ? 'dash-spin' : ''}
+            />
+          </button>
+        </div>
+      </header>
+
+      {/* ======================================================
+          ERROR
+          ====================================================== */}
+
+      {error && (
+        <div className="dash-error" role="alert">
+          <strong>Something went wrong.</strong>
+          <span>{error}</span>
+          <button type="button" onClick={() => void loadDashboard(true)}>
             Try again
           </button>
         </div>
       )}
 
       {/* ======================================================
-          QUICK ACTIONS
-      ====================================================== */}
+          STAT CARDS — 4 column grid
+          ====================================================== */}
 
-      <section className="dashboard-section">
-        <div className="dashboard-section-header">
-          <div>
-            <div className="dashboard-section-label">
-              <TrendingUp size={16} />
-              Quick Actions
-            </div>
-
-            <h2>Manage your money</h2>
-
-            <p>
-              Access your wallet and transaction
-              tools quickly.
-            </p>
-          </div>
-        </div>
-
-        <div className="dashboard-quick-actions">
-          <button
-            type="button"
-            className="dashboard-quick-action"
-            onClick={() =>
-              router.push('/wallets')
-            }
-          >
-            <span className="dashboard-quick-action-icon">
-              <Wallet size={20} />
-            </span>
-
-            <span>
-              <strong>Manage Wallets</strong>
-              <small>
-                View balances and accounts
-              </small>
-            </span>
-
-            <ArrowRight size={17} />
-          </button>
-
-          <button
-            type="button"
-            className="dashboard-quick-action"
-            onClick={() =>
-              router.push('/transactions')
-            }
-          >
-            <span className="dashboard-quick-action-icon">
-              <Send size={20} />
-            </span>
-
-            <span>
-              <strong>Transactions</strong>
-              <small>
-                Review recent activity
-              </small>
-            </span>
-
-            <ArrowRight size={17} />
-          </button>
-
-          <button
-            type="button"
-            className="dashboard-quick-action"
-            onClick={() =>
-              router.push('/ledger')
-            }
-          >
-            <span className="dashboard-quick-action-icon">
-              <Landmark size={20} />
-            </span>
-
-            <span>
-              <strong>View Ledger</strong>
-              <small>
-                Review ledger activity
-              </small>
-            </span>
-
-            <ArrowRight size={17} />
-          </button>
-        </div>
-      </section>
-
-      {/* ======================================================
-          OVERVIEW CARDS
-      ====================================================== */}
-
-      <section className="dashboard-overview-grid">
+      <div className="dash-stats-grid">
 
         {/* TOTAL BALANCE */}
-
-        <div className="dashboard-stat-card dashboard-stat-primary">
-
-          <div className="dashboard-stat-top">
-
-            <div className="dashboard-stat-icon">
-              <Wallet size={23} />
+        <div className="dash-stat-card dash-stat-primary">
+          <div className="dash-stat-top">
+            <span className="dash-stat-label">Total Balance</span>
+            <div className="dash-stat-icon-wrap primary">
+              <Wallet size={18} />
             </div>
-
-            <div className="dashboard-stat-trend">
-              <TrendingUp size={15} />
-              Overview
-            </div>
-
           </div>
 
-          <div className="dashboard-stat-content">
-
-            <span>
-              Total Wallet Balance
-            </span>
-
-            <h2>
-              {primaryBalance
-                ? formatAmount(
-                    primaryBalance[1],
-                    primaryBalance[0],
-                  )
-                : '—'}
-            </h2>
-
-            <p>
-              {currencyBalances.length > 1
-                ? `${currencyBalances.length} currencies across your wallets`
-                : primaryBalance
-                  ? `${primaryBalance[0]} wallet balance`
-                  : 'No wallet balance available'}
-            </p>
-
+          <div className="dash-stat-value">
+            {primaryBalance
+              ? formatAmount(primaryBalance[1], primaryBalance[0])
+              : '₦ 0.00'}
           </div>
 
+          <div className="dash-stat-sub">
+            <TrendingUp size={13} />
+            {currencyBalances.length > 1
+              ? `${currencyBalances.length} currencies`
+              : primaryBalance
+                ? `${primaryBalance[0]} wallet`
+                : 'No balance'}
+          </div>
+
+          <div className="dash-stat-bar">
+            <div className="dash-stat-bar-fill primary" style={{ width: '72%' }} />
+          </div>
         </div>
 
         {/* ACTIVE WALLETS */}
-
-        <div className="dashboard-stat-card">
-
-          <div className="dashboard-stat-top">
-            <div className="dashboard-stat-icon">
-              <CircleDollarSign size={23} />
+        <div className="dash-stat-card">
+          <div className="dash-stat-top">
+            <span className="dash-stat-label">Active Wallets</span>
+            <div className="dash-stat-icon-wrap blue">
+              <CircleDollarSign size={18} />
             </div>
           </div>
 
-          <div className="dashboard-stat-content">
+          <div className="dash-stat-value">{activeWallets}</div>
 
-            <span>
-              Active Wallets
-            </span>
-
-            <h2>
-              {activeWallets}
-            </h2>
-
-            <p>
-              {wallets.length} total wallet
-              {wallets.length === 1
-                ? ''
-                : 's'}
-            </p>
-
+          <div className="dash-stat-sub">
+            <Activity size={13} />
+            {wallets.length} total wallet{wallets.length !== 1 ? 's' : ''}
           </div>
 
+          <div className="dash-stat-bar">
+            <div
+              className="dash-stat-bar-fill blue"
+              style={{
+                width: wallets.length
+                  ? `${Math.round((activeWallets / wallets.length) * 100)}%`
+                  : '0%',
+              }}
+            />
+          </div>
         </div>
 
         {/* VIRTUAL ACCOUNTS */}
-
-        <div className="dashboard-stat-card">
-
-          <div className="dashboard-stat-top">
-            <div className="dashboard-stat-icon">
-              <Landmark size={23} />
+        <div className="dash-stat-card">
+          <div className="dash-stat-top">
+            <span className="dash-stat-label">Virtual Accounts</span>
+            <div className="dash-stat-icon-wrap green">
+              <Landmark size={18} />
             </div>
           </div>
 
-          <div className="dashboard-stat-content">
+          <div className="dash-stat-value">{totalAccounts}</div>
 
-            <span>
-              Virtual Accounts
-            </span>
-
-            <h2>
-              {totalAccounts}
-            </h2>
-
-            <p>
-              Wallets with account numbers
-            </p>
-
+          <div className="dash-stat-sub">
+            <BadgeCheck size={13} />
+            With bank account numbers
           </div>
 
+          <div className="dash-stat-bar">
+            <div
+              className="dash-stat-bar-fill green"
+              style={{
+                width: wallets.length
+                  ? `${Math.round((totalAccounts / wallets.length) * 100)}%`
+                  : '0%',
+              }}
+            />
+          </div>
         </div>
 
         {/* TRANSACTIONS */}
-
-        <div className="dashboard-stat-card">
-
-          <div className="dashboard-stat-top">
-            <div className="dashboard-stat-icon">
-              <Activity size={23} />
+        <div className="dash-stat-card">
+          <div className="dash-stat-top">
+            <span className="dash-stat-label">Transactions</span>
+            <div className="dash-stat-icon-wrap amber">
+              <Send size={18} />
             </div>
           </div>
 
-          <div className="dashboard-stat-content">
+          <div className="dash-stat-value">{transactions.length}</div>
 
-            <span>
-              Recent Transactions
-            </span>
-
-            <h2>
-              {transactions.length}
-            </h2>
-
-            <p>
-              Latest recorded transactions
-            </p>
-
+          <div className="dash-stat-sub">
+            <Clock3 size={13} />
+            Recent activity
           </div>
 
+          <div className="dash-stat-bar">
+            <div
+              className="dash-stat-bar-fill amber"
+              style={{ width: transactions.length > 0 ? '60%' : '0%' }}
+            />
+          </div>
         </div>
 
-      </section>
-
+      </div>
 
       {/* ======================================================
-          BALANCE BY CURRENCY
-      ====================================================== */}
+          CHART + QUICK ACTIONS
+          ====================================================== */}
 
-      {currencyBalances.length > 1 && (
-        <section className="dashboard-section">
-          <div className="dashboard-section-header">
+      <div className="dash-mid-grid">
+
+        {/* BALANCE TREND CHART */}
+        <div className="dash-chart-card">
+          <div className="dash-card-header">
             <div>
-              <div className="dashboard-section-label">
-                <CircleDollarSign size={16} />
-                Currency Breakdown
-              </div>
-
-              <h2>Wallet Balances</h2>
-
-              <p>
-                Balances are displayed separately by
-                currency and are not combined.
-              </p>
+              <h2>Balance Trend</h2>
+              <p>Estimated monthly balance movement</p>
             </div>
+            <button
+              type="button"
+              className="dash-view-link"
+              onClick={() => router.push('/wallets')}
+            >
+              View Wallets
+              <ArrowRight size={14} />
+            </button>
           </div>
 
-          <div className="dashboard-wallet-grid">
-            {currencyBalances.map(
-              ([currency, balance]) => (
-                <article
-                  key={currency}
-                  className="dashboard-wallet-card"
-                >
-                  <div className="dashboard-wallet-card-top">
-                    <div className="dashboard-wallet-icon">
-                      <CircleDollarSign size={21} />
-                    </div>
-
-                    <span className="dashboard-wallet-status active">
-                      <span className="status-dot" />
-                      Available
-                    </span>
-                  </div>
-
-                  <div className="dashboard-wallet-divider" />
-
-                  <div className="dashboard-wallet-content">
-                    <span className="dashboard-wallet-currency">
-                      {currency}
-                    </span>
-
-                    <h3>
-                      {formatAmount(
-                        balance,
-                        currency,
-                      )}
-                    </h3>
-                  </div>
-                </article>
-              ),
-            )}
+          <div className="dash-chart-area">
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart
+                data={chartData}
+                margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f1f5f9"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#9ca3af' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: number) =>
+                    v >= 1_000_000
+                      ? `₦${(v / 1_000_000).toFixed(1)}M`
+                      : v >= 1_000
+                        ? `₦${(v / 1_000).toFixed(0)}K`
+                        : `₦${v}`
+                  }
+                />
+                <Tooltip content={<ChartTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="balance"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  fill="url(#balanceGrad)"
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#2563eb', stroke: '#fff', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        </section>
-      )}
-
-      {/* ======================================================
-          WALLETS SECTION
-      ====================================================== */}
-
-      <section className="dashboard-section">
-
-        <div className="dashboard-section-header">
-
-          <div>
-
-            <div className="dashboard-section-label">
-              <CircleDollarSign size={16} />
-              Financial Accounts
-            </div>
-
-            <h2>My Wallets</h2>
-
-            <p>
-              Manage and monitor your available
-              currency wallets and virtual account
-              details.
-            </p>
-
-          </div>
-
-          <button
-            type="button"
-            className="dashboard-view-button"
-            onClick={() =>
-              router.push('/wallets')
-            }
-          >
-            View All
-            <ArrowRight size={16} />
-          </button>
-
         </div>
 
-        {wallets.length === 0 ? (
-          <div className="dashboard-empty-state">
-
-            <div className="dashboard-empty-icon">
-              <Wallet size={30} />
+        {/* QUICK ACTIONS */}
+        <div className="dash-quick-card">
+          <div className="dash-card-header">
+            <div>
+              <h2>Quick Actions</h2>
+              <p>Jump to key features</p>
             </div>
+          </div>
 
-            <h3>No wallets found</h3>
-
-            <p>
-              Create your first wallet to begin
-              managing your finances.
-            </p>
+          <div className="dash-quick-list">
 
             <button
               type="button"
-              onClick={() =>
-                router.push('/wallets')
-              }
+              className="dash-quick-item"
+              onClick={() => router.push('/wallets')}
             >
-              Go to Wallets
+              <span className="dash-quick-icon blue">
+                <Wallet size={19} />
+              </span>
+              <span className="dash-quick-text">
+                <strong>Manage Wallets</strong>
+                <small>View balances & fund</small>
+              </span>
+              <ArrowRight size={15} className="dash-quick-arrow" />
+            </button>
+
+            <button
+              type="button"
+              className="dash-quick-item"
+              onClick={() => router.push('/transactions')}
+            >
+              <span className="dash-quick-icon green">
+                <Send size={19} />
+              </span>
+              <span className="dash-quick-text">
+                <strong>Transactions</strong>
+                <small>Send & receive money</small>
+              </span>
+              <ArrowRight size={15} className="dash-quick-arrow" />
+            </button>
+
+            <button
+              type="button"
+              className="dash-quick-item"
+              onClick={() => router.push('/kyc')}
+            >
+              <span className="dash-quick-icon amber">
+                <BadgeCheck size={19} />
+              </span>
+              <span className="dash-quick-text">
+                <strong>KYC Verification</strong>
+                <small>Verify your identity</small>
+              </span>
+              <ArrowRight size={15} className="dash-quick-arrow" />
+            </button>
+
+            <button
+              type="button"
+              className="dash-quick-item"
+              onClick={() => router.push('/ledger')}
+            >
+              <span className="dash-quick-icon purple">
+                <BookOpen size={19} />
+              </span>
+              <span className="dash-quick-text">
+                <strong>Ledger</strong>
+                <small>Double-entry records</small>
+              </span>
+              <ArrowRight size={15} className="dash-quick-arrow" />
+            </button>
+
+            <button
+              type="button"
+              className="dash-quick-item"
+              onClick={() => router.push('/notifications')}
+            >
+              <span className="dash-quick-icon slate">
+                <Bell size={19} />
+              </span>
+              <span className="dash-quick-text">
+                <strong>Notifications</strong>
+                <small>Account alerts & updates</small>
+              </span>
+              <ArrowRight size={15} className="dash-quick-arrow" />
             </button>
 
           </div>
-        ) : (
-          <div className="dashboard-wallet-grid">
+        </div>
 
-            {wallets.map((wallet) => (
-              <article
-                key={wallet.id}
-                className="dashboard-wallet-card"
-                role="button"
-                tabIndex={0}
-                onClick={() =>
-                  router.push(
-                    `/wallets/${wallet.id}`,
-                  )
-                }
-                onKeyDown={(event) => {
-                  if (
-                    event.key === 'Enter' ||
-                    event.key === ' '
-                  ) {
-                    event.preventDefault();
-                    router.push(
-                      `/wallets/${wallet.id}`,
-                    );
-                  }
-                }}
-              >
-
-                <div className="dashboard-wallet-card-top">
-
-                  <div className="dashboard-wallet-icon">
-                    <Wallet size={21} />
-                  </div>
-
-                  <span
-                    className={`dashboard-wallet-status ${wallet.status.toLowerCase()}`}
-                  >
-                    <span className="status-dot" />
-
-                    {
-                      formatStatus(
-                        wallet.status,
-                      )
-                    }
-                  </span>
-
-                </div>
-
-                <div className="dashboard-wallet-divider" />
-
-                <div className="dashboard-wallet-content">
-
-                  <span className="dashboard-wallet-currency">
-                    {wallet.currency} Wallet
-                  </span>
-
-                  <h3>
-                    {formatAmount(
-                      wallet.balance,
-                      wallet.currency,
-                    )}
-                  </h3>
-
-                </div>
-
-                <div className="dashboard-wallet-account">
-
-                  <div className="dashboard-account-row">
-                    <span>
-                      Account Number
-                    </span>
-
-                    <strong>
-                      {wallet.account
-                        ?.accountNumber ??
-                        'Not available'}
-                    </strong>
-                  </div>
-
-                  <div className="dashboard-account-row">
-                    <span>
-                      Account Name
-                    </span>
-
-                    <strong>
-                      {wallet.account
-                        ?.accountName ??
-                        'Not available'}
-                    </strong>
-                  </div>
-
-                  <div className="dashboard-account-row">
-                    <span>Bank</span>
-
-                    <strong>
-                      {wallet.account
-                        ?.bankName ??
-                        'Not available'}
-                    </strong>
-                  </div>
-
-                </div>
-
-                <div className="dashboard-wallet-footer">
-
-                  <span>Wallet ID</span>
-
-                  <strong>
-                    #{wallet.id}
-                  </strong>
-
-                </div>
-
-              </article>
-            ))}
-
-          </div>
-        )}
-
-      </section>
+      </div>
 
       {/* ======================================================
-          RECENT TRANSACTIONS
-      ====================================================== */}
+          WALLETS ROW
+          ====================================================== */}
 
-      <section className="dashboard-section">
-
-        <div className="dashboard-section-header">
-
-          <div>
-
-            <div className="dashboard-section-label">
-              <Clock3 size={16} />
-              Latest Activity
+      {wallets.length > 0 && (
+        <div className="dash-section-card">
+          <div className="dash-card-header">
+            <div>
+              <h2>My Wallets</h2>
+              <p>Your active currency wallets</p>
             </div>
-
-            <h2>
-              Recent Transactions
-            </h2>
-
-            <p>
-              A quick overview of your latest
-              financial activity.
-            </p>
-
+            <button
+              type="button"
+              className="dash-view-link"
+              onClick={() => router.push('/wallets')}
+            >
+              View All
+              <ArrowRight size={14} />
+            </button>
           </div>
 
+          <div className="dash-wallets-row">
+            {wallets.slice(0, 4).map((wallet) => (
+              <button
+                key={wallet.id}
+                type="button"
+                className="dash-wallet-pill"
+                onClick={() => router.push(`/wallets/${wallet.id}`)}
+              >
+                <div className="dash-wallet-pill-top">
+                  <span className="dash-wallet-pill-currency">{wallet.currency}</span>
+                  <span
+                    className={`dash-wallet-pill-status ${wallet.status.toLowerCase()}`}
+                  >
+                    {wallet.status === 'ACTIVE' ? 'Active' : wallet.status}
+                  </span>
+                </div>
+
+                <p className="dash-wallet-pill-amount">
+                  {formatAmount(wallet.balance, wallet.currency)}
+                </p>
+
+                {wallet.account && (
+                  <p className="dash-wallet-pill-bank">
+                    {wallet.account.bankName} · {wallet.account.accountNumber}
+                  </p>
+                )}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              className="dash-wallet-pill dash-wallet-add"
+              onClick={() => router.push('/wallets')}
+            >
+              <Plus size={20} />
+              <span>Add Wallet</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================
+          RECENT TRANSACTIONS TABLE
+          ====================================================== */}
+
+      <div className="dash-section-card">
+        <div className="dash-card-header">
+          <div>
+            <h2>Recent Transactions</h2>
+            <p>Your latest financial activity</p>
+          </div>
           <button
             type="button"
-            className="dashboard-view-button"
-            onClick={() =>
-              router.push('/transactions')
-            }
+            className="dash-view-link"
+            onClick={() => router.push('/transactions')}
           >
             View All
-            <ArrowRight size={16} />
+            <ArrowRight size={14} />
           </button>
-
         </div>
 
-        <div className="dashboard-transactions-card">
+        {transactions.length === 0 ? (
+          <div className="dash-empty">
+            <Activity size={32} />
+            <h3>No transactions yet</h3>
+            <p>Your activity will appear here once transactions are made.</p>
+          </div>
+        ) : (
+          <div className="dash-tx-table-wrap">
+            <table className="dash-tx-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Reference</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx) => {
+                  const type = getTransactionType(tx);
 
-          {transactions.length === 0 ? (
-            <div className="dashboard-empty-state">
-
-              <div className="dashboard-empty-icon">
-                <Activity size={30} />
-              </div>
-
-              <h3>
-                No transactions yet
-              </h3>
-
-              <p>
-                Your financial activity will appear
-                here once transactions are made.
-              </p>
-
-            </div>
-          ) : (
-            <div className="dashboard-transaction-list">
-
-              {transactions.map(
-                (transaction) => (
-                  <article
-                    key={transaction.id}
-                    className="dashboard-transaction-row"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() =>
-                      router.push(
-                        `/transactions/${transaction.id}`,
-                      )
-                    }
-                    onKeyDown={(event) => {
-                      if (
-                        event.key === 'Enter' ||
-                        event.key === ' '
-                      ) {
-                        event.preventDefault();
-                        router.push(
-                          `/transactions/${transaction.id}`,
-                        );
-                      }
-                    }}
-                  >
-
-                    <div
-                      className={getTransactionClass(
-                        transaction.type ?? '',
-                      )}
-                    >
-                      {getTransactionIcon(
-                        transaction.type ?? '',
-                      )}
-                    </div>
-
-                    <div className="dashboard-transaction-info">
-
-                      <strong>
-                        {
-                          formatStatus(
-                            getTransactionType(
-                              transaction,
-                            ),
-                          )
+                  return (
+                    <tr
+                      key={tx.id}
+                      className="dash-tx-row"
+                      onClick={() => router.push(`/transactions/${tx.id}`)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          router.push(`/transactions/${tx.id}`);
                         }
-                      </strong>
-
-                      <span>
-                        {transaction.reference}
-                      </span>
-
-                    </div>
-
-                    <div className="dashboard-transaction-date">
-
-                      <Clock3 size={14} />
-
-                      {formatDate(
-                        transaction.createdAt,
-                      )}
-
-                    </div>
-
-                    <div className="dashboard-transaction-amount">
-
-                      <strong>
-                        {formatAmount(
-                          transaction.amount,
-                          transaction.currency,
-                        )}
-                      </strong>
-
-                      <span
-                        className={`dashboard-transaction-status ${getStatusClass(
-                          transaction.status,
-                        )}`}
-                      >
-                        {transaction.status}
-                      </span>
-
-                    </div>
-
-                    <ArrowRight
-                      size={16}
-                      className="dashboard-transaction-arrow"
-                      aria-hidden="true"
-                    />
-                  </article>
-                ),
-              )}
-
-            </div>
-          )}
-
-        </div>
-
-      </section>
+                      }}
+                    >
+                      <td>
+                        <span className={`dash-tx-type-icon ${type.toLowerCase()}`}>
+                          {type === 'DEPOSIT' ? (
+                            <ArrowDownLeft size={15} />
+                          ) : type === 'WITHDRAWAL' ? (
+                            <ArrowUpRight size={15} />
+                          ) : (
+                            <Activity size={15} />
+                          )}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="dash-tx-ref">{tx.reference}</span>
+                        <span className="dash-tx-type-label">
+                          {type.charAt(0) + type.slice(1).toLowerCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`dash-tx-amount ${
+                            type === 'DEPOSIT' ? 'credit' : 'debit'
+                          }`}
+                        >
+                          {type === 'DEPOSIT' ? '+' : '-'}
+                          {formatAmount(tx.amount, tx.currency)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={txStatusClass(tx.status)}>
+                          {tx.status.charAt(0) + tx.status.slice(1).toLowerCase()}
+                        </span>
+                      </td>
+                      <td className="dash-tx-date">{formatDate(tx.createdAt)}</td>
+                      <td>
+                        <ArrowRight size={14} className="dash-tx-arrow" />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
     </main>
   );

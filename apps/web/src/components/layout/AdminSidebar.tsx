@@ -30,6 +30,8 @@ import {
   getAuthUser,
 } from '@/lib/auth';
 
+import ZarovaLogo from '@/components/ui/ZarovaLogo';
+
 type AuthUser = {
   id?: number;
   email?: string;
@@ -259,9 +261,7 @@ export default function AdminSidebar() {
             href="/admin"
             className="admin-brand-link"
           >
-            <div className="admin-brand-icon">
-              <ShieldCheck size={22} />
-            </div>
+            <ZarovaLogo size={34} showText={false} />
 
             <div>
               <strong>Zarova</strong>

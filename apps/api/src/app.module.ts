@@ -36,6 +36,7 @@ import { NotificationsModule } from './notifications/notifications.module.js';
 import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { PaystackModule } from './paystack/paystack.module.js';
 import { KycModule } from './kyc/kyc.module.js';
+import { BillsModule } from './bills/bills.module.js';
 
 @Module({
   imports: [
@@ -91,6 +92,9 @@ import { KycModule } from './kyc/kyc.module.js';
 
     // KYC / AML
     KycModule,
+
+    // Bill Payments (airtime, data, electricity, cable, internet)
+    BillsModule,
   ],
 
   controllers: [AppController],
