@@ -32,8 +32,9 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Runtime dependencies (includes Prisma CLI for migrations)
-COPY --from=deps --chown=nestjs:nodejs /app/node_modules ./node_modules
+# Use build-stage node_modules so the Prisma CLI (devDep) is available for
+# the migration step in start.sh. The image is slightly larger but correct.
+COPY --from=build --chown=nestjs:nodejs /app/node_modules ./node_modules
 
 # Compiled application
 COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
