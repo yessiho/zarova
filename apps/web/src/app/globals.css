@@ -35729,6 +35729,43 @@ a.rpt-kpi:hover .rpt-kpi-arrow { color: #94a3b8; }
   margin: 0;
 }
 
+/* Quick amount chips in Paystack modal */
+.wallet-quick-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.wallet-quick-amount {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.wallet-quick-amount:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.wallet-quick-amount.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.wallet-quick-amount:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* =========================================================
    PAYSTACK VERIFY PAGE
 ========================================================= */

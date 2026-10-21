@@ -5,6 +5,8 @@ import {
   IsObject,
   IsOptional,
   IsPositive,
+  IsString,
+  IsUrl,
 } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -75,4 +77,22 @@ export class InitializePaymentDto {
   @IsObject()
   @IsOptional()
   metadata?: Record<string, unknown>;
+
+  /*
+   * ==========================================
+   * CALLBACK URL
+   *
+   * Where Paystack redirects the user after
+   * payment. Paystack appends ?reference=...
+   * and ?trxref=... automatically.
+   * ==========================================
+   */
+  @ApiPropertyOptional({
+    description: 'URL to redirect to after Paystack checkout completes',
+    example: 'https://app.zarova.com/wallets',
+  })
+  @IsUrl({ require_tld: false })
+  @IsString()
+  @IsOptional()
+  callbackUrl?: string;
 }

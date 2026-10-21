@@ -143,6 +143,7 @@ export class PaystackService {
           amount: amountKobo,
           reference,
           currency,
+          ...(dto.callbackUrl ? { callback_url: dto.callbackUrl } : {}),
           metadata: {
             userId,
             walletId: dto.walletId,

@@ -1035,6 +1035,11 @@ function WalletsPageContent() {
 
       setError('');
 
+      const callbackUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/wallets`
+          : undefined;
+
       const data =
         await apiFetch<PaystackInitResponse>(
           '/paystack/initialize',
@@ -1044,22 +1049,17 @@ function WalletsPageContent() {
             body: JSON.stringify({
               amount: fundAmount,
               walletId,
+              ...(callbackUrl
+                ? { callbackUrl }
+                : {}),
             }),
           },
         );
 
-      // Open Paystack in a new tab
-      window.open(
-        data.authorizationUrl,
-        '_blank',
-        'noopener,noreferrer',
-      );
-
-      setSuccess(
-        'Paystack checkout opened in a new tab. Complete your payment, then return here and refresh your wallets.',
-      );
-
-      closeModal();
+      // Redirect in the same tab so Paystack
+      // can return here with ?reference=...
+      window.location.href =
+        data.authorizationUrl;
     } catch (err: unknown) {
       console.error(
         'PAYSTACK INIT ERROR:',
@@ -2721,13 +2721,37 @@ function WalletsPageContent() {
                   </div>
 
                   <small>
-                    Minimum amount
-                    is ₦100. You will
-                    be redirected to
-                    Paystack to complete
-                    payment in a new tab.
+                    Minimum ₦100.
+                    You will be redirected
+                    to Paystack to
+                    complete payment.
                   </small>
 
+                </div>
+
+                {/* QUICK AMOUNTS */}
+
+                <div className="wallet-quick-amounts">
+                  {[1000, 2000, 5000, 10000, 20000, 50000].map(
+                    (q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        className={`wallet-quick-amount${amount === String(q) ? ' active' : ''}`}
+                        onClick={() =>
+                          setAmount(
+                            String(q),
+                          )
+                        }
+                        disabled={
+                          submitting
+                        }
+                      >
+                        ₦
+                        {q.toLocaleString()}
+                      </button>
+                    ),
+                  )}
                 </div>
 
                 {/* PAYSTACK NOTICE */}
@@ -2739,15 +2763,14 @@ function WalletsPageContent() {
                   />
 
                   <p>
-                    After completing
-                    payment on
-                    Paystack, return
-                    to this page. If
-                    you were redirected
-                    back automatically,
-                    your payment will
-                    be verified and
-                    your wallet updated.
+                    You will be taken
+                    to Paystack to
+                    complete your
+                    payment. Once done,
+                    you are automatically
+                    returned here and
+                    your wallet is
+                    credited instantly.
                   </p>
 
                 </div>
