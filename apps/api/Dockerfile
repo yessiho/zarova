@@ -39,9 +39,10 @@ COPY --from=build --chown=nestjs:nodejs /app/node_modules ./node_modules
 # Compiled application
 COPY --from=build --chown=nestjs:nodejs /app/dist ./dist
 
-# Prisma contract files needed at runtime for migrations
+# Prisma contract files + migration files needed at runtime
 COPY --from=build --chown=nestjs:nodejs /app/src/prisma ./src/prisma
 COPY --from=build --chown=nestjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=build --chown=nestjs:nodejs /app/migrations ./migrations
 
 # Startup script (runs migrations then starts the server)
 COPY --chown=nestjs:nodejs start.sh ./start.sh

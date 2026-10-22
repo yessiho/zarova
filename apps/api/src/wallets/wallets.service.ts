@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -471,7 +472,7 @@ export class WalletsService {
             existingWallet,
           );
 
-        throw new BadRequestException(
+        throw new ConflictException(
           `You already have a ${currency} wallet`,
         );
       }
@@ -513,6 +514,7 @@ export class WalletsService {
 
       if (
         error instanceof BadRequestException ||
+        error instanceof ConflictException ||
         error instanceof NotFoundException
       ) {
         throw error;
