@@ -15,12 +15,14 @@ import {
   BookOpen,
   LayoutDashboard,
   LogOut,
+  Menu,
   Phone,
   ReceiptText,
   Send,
   Settings,
   ShieldCheck,
   WalletCards,
+  X,
 } from 'lucide-react';
 
 import ZarovaLogo from '@/components/ui/ZarovaLogo';
@@ -105,6 +107,13 @@ export default function Sidebar() {
 
   const [loggingOut, setLoggingOut] =
     useState(false);
+
+  const [mobileOpen, setMobileOpen] =
+    useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   // ============================================================
   // LOAD AUTHENTICATED USER
@@ -311,7 +320,27 @@ export default function Sidebar() {
   // ============================================================
 
   return (
-    <aside className="sidebar">
+    <>
+      <button
+        type="button"
+        className="mobile-menu-button"
+        onClick={() => setMobileOpen((o) => !o)}
+        aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+        aria-expanded={mobileOpen}
+      >
+        {mobileOpen ? <X size={21} /> : <Menu size={21} />}
+      </button>
+
+      {mobileOpen && (
+        <button
+          type="button"
+          className="sidebar-overlay"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close navigation"
+        />
+      )}
+
+      <aside className={`sidebar${mobileOpen ? ' mobile-open' : ''}`}>
 
       {/* ======================================================
           BRAND
@@ -450,5 +479,6 @@ export default function Sidebar() {
 
       </div>
     </aside>
+    </>
   );
 }
