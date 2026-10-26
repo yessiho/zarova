@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -13,13 +14,66 @@ import {
 } from './rbac.constants.js';
 
 @Injectable()
-export class RbacSeedService {
+export class RbacSeedService implements OnModuleInit {
   private readonly logger =
     new Logger(RbacSeedService.name);
 
   constructor(
     private readonly prisma: PrismaService,
   ) {}
+
+  async onModuleInit() {
+    await this.seed();
+    await this.bootstrapFirstAdmin();
+  }
+
+  /**
+   * If the first-registered admin has no roles, assign them SUPER_ADMIN.
+   * This handles cold-start bootstrap where the admin was created before
+   * the RBAC tables were populated.
+   */
+  private async bootstrapFirstAdmin(): Promise<void> {
+    const firstAdmin =
+      await this.prisma.client.orm.public.Admin.first({
+        id: 1,
+      });
+
+    if (!firstAdmin) {
+      return;
+    }
+
+    const existingAssignments =
+      await this.prisma.client.orm.public.AdminRoleAssignment.where({
+        adminId: firstAdmin.id,
+      }).all();
+
+    if (existingAssignments.length > 0) {
+      return;
+    }
+
+    const superAdminRole =
+      await this.prisma.client.orm.public.AdminRole.first({
+        code: ADMIN_ROLE_CODES.SUPER_ADMIN,
+      });
+
+    if (!superAdminRole) {
+      this.logger.error(
+        'SUPER_ADMIN role not found after seeding — cannot bootstrap first admin.',
+      );
+      return;
+    }
+
+    await this.prisma.client.orm.public.AdminRoleAssignment.create({
+      adminId: firstAdmin.id,
+      roleId: superAdminRole.id,
+      isActive: true,
+      updatedAt: nowInstant(),
+    });
+
+    this.logger.log(
+      `Assigned SUPER_ADMIN role to first admin: ${firstAdmin.email}`,
+    );
+  }
 
   /**
    * Seed the complete RBAC definition.
