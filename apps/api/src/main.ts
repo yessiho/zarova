@@ -17,14 +17,18 @@ async function bootstrap() {
    */
   const allowedOrigins = [
     'http://localhost:3000',
+    'http://localhost:3001',
     ...(process.env['FRONTEND_URL']
       ? [process.env['FRONTEND_URL']]
+      : []),
+    ...(process.env['API_URL']
+      ? [process.env['API_URL']]
       : []),
   ];
 
   app.enableCors({
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      // Allow requests with no origin (e.g. curl, Swagger, mobile apps)
+      // Allow requests with no origin (curl, mobile apps without browser)
       if (!origin) return callback(null, true);
       // Allow explicitly listed origins
       if (allowedOrigins.includes(origin)) return callback(null, true);
