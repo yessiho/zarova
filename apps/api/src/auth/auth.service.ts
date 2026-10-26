@@ -290,48 +290,53 @@ export class AuthService {
   // ============================================================
 
   async adminRegister(createAdminDto: CreateAdminDto) {
-    const {
-      email,
-      password,
-      firstName,
-      lastName,
-    } = createAdminDto;
-
-    const normalizedEmail = email.trim().toLowerCase();
-
-    const existingAdmin =
-      await this.prisma.client.orm.public.Admin.first({
-        email: normalizedEmail,
-      });
-
-    if (existingAdmin) {
-      throw new ConflictException(
-        'Admin email already exists',
-      );
-    }
-
-    const passwordHash = await bcrypt.hash(
-      password,
-      12,
-    );
-
-    const admin =
-      await this.prisma.client.orm.public.Admin.create({
-        email: normalizedEmail,
-        passwordHash,
+    try {
+      const {
+        email,
+        password,
         firstName,
         lastName,
-        updatedAt: nowInstant(),
-      });
+      } = createAdminDto;
 
-    return {
-      id: admin.id,
-      email: admin.email,
-      firstName: admin.firstName,
-      lastName: admin.lastName,
-      status: admin.status,
-      createdAt: admin.createdAt,
-    };
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existingAdmin =
+        await this.prisma.client.orm.public.Admin.first({
+          email: normalizedEmail,
+        });
+
+      if (existingAdmin) {
+        throw new ConflictException(
+          'Admin email already exists',
+        );
+      }
+
+      const passwordHash = await bcrypt.hash(
+        password,
+        12,
+      );
+
+      const admin =
+        await this.prisma.client.orm.public.Admin.create({
+          email: normalizedEmail,
+          passwordHash,
+          firstName,
+          lastName,
+          updatedAt: nowInstant(),
+        });
+
+      return {
+        id: admin.id,
+        email: admin.email,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        status: admin.status,
+        createdAt: admin.createdAt,
+      };
+    } catch (error) {
+      console.error('[adminRegister] ERROR:', error);
+      throw error;
+    }
   }
 
   // ============================================================
