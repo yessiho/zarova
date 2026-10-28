@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 
 import AuthGuard from '@/components/auth/AuthGuard';
 import Sidebar from '@/components/layout/Sidebar';
+import LiveNotificationToast from '@/components/ui/LiveNotificationToast';
 
 // ============================================================
 // DASHBOARD LAYOUT
@@ -46,6 +47,8 @@ export default function DashboardLayout({
           </div>
 
         </main>
+
+        <LiveNotificationToast />
 
       </div>
     </AuthGuard>

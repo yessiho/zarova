@@ -223,6 +223,74 @@ export class AdminsService {
     return this.toPublicAdmin(updatedAdmin);
   }
 
+  async getDashboardStats() {
+    const [allUsers, allTransactions, allAdmins] = await Promise.all([
+      this.prisma.client.orm.public.User.all(),
+      this.prisma.client.orm.public.Transaction.all(),
+      this.prisma.client.orm.public.Admin.all(),
+    ]);
+
+    // ── Totals ─────────────────────────────────────────────────
+    const totalUsers = allUsers.length;
+    const totalAdmins = allAdmins.length;
+    const completedTxns = allTransactions.filter(
+      (t) => t.status === 'COMPLETED',
+    );
+    const totalVolume = completedTxns.reduce(
+      (sum, t) => sum + t.amount,
+      0n,
+    );
+
+    // ── Last 7 days transaction chart data ─────────────────────
+    const now = new Date();
+    const chartDays: { date: string; count: number; volume: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date(now);
+      day.setDate(now.getDate() - i);
+      const dateStr = day.toISOString().split('T')[0]!;
+
+      const dayTxns = allTransactions.filter((t) => {
+        const created = new Date(String(t.createdAt)).toISOString().split('T')[0];
+        return created === dateStr && t.status === 'COMPLETED';
+      });
+
+      chartDays.push({
+        date: dateStr,
+        count: dayTxns.length,
+        volume: Number(
+          dayTxns.reduce((s, t) => s + t.amount, 0n) / 100n,
+        ), // convert kobo → NGN
+      });
+    }
+
+    // ── Last 7 days user registrations ─────────────────────────
+    const userGrowth: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date(now);
+      day.setDate(now.getDate() - i);
+      const dateStr = day.toISOString().split('T')[0]!;
+
+      const dayUsers = allUsers.filter((u) => {
+        const created = new Date(String(u.createdAt)).toISOString().split('T')[0];
+        return created === dateStr;
+      });
+
+      userGrowth.push({ date: dateStr, count: dayUsers.length });
+    }
+
+    return {
+      totals: {
+        users: totalUsers,
+        admins: totalAdmins,
+        transactions: allTransactions.length,
+        volume: Number(totalVolume / 100n), // NGN
+      },
+      transactionChart: chartDays,
+      userGrowthChart: userGrowth,
+    };
+  }
+
   private toPublicAdmin(admin: any) {
     return {
       id: admin.id,

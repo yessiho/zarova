@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'crypto';
 
 import { PrismaService } from '../prisma/prisma.service.js';
+import { EmailService } from '../email/email.service.js';
 
 import { CreateAdminDto } from './dto/create-admin.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -22,6 +23,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   // ============================================================
@@ -145,19 +147,30 @@ export class AuthService {
       passwordResetExpires,
     });
 
-    /*
-     * DEVELOPMENT MODE
-     *
-     * In production:
-     * - Send resetToken through email
-     * - Do NOT return resetToken in the API response
-     */
+    // ──────────────────────────────────────────────────────────────
+    // Send password reset email.
+    // EmailService silently skips in dev mode when EMAIL_USER is
+    // not configured, so this is always safe to call.
+    // ──────────────────────────────────────────────────────────────
+    const frontendUrl =
+      process.env['FRONTEND_URL'] ?? 'http://localhost:3000';
+
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    await this.emailService.sendPasswordResetEmail(
+      user.email,
+      user.firstName,
+      resetToken,
+      resetUrl,
+    );
+
+    const devMode = !process.env['EMAIL_USER'];
+
     return {
       message: successMessage,
-
-      resetToken,
-
-      expiresIn: '15 minutes',
+      // Only expose the raw token when email is not configured.
+      // Remove this field once a real SMTP provider is wired up.
+      ...(devMode ? { resetToken, expiresIn: '15 minutes' } : {}),
     };
   }
 

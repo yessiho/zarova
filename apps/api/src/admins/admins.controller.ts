@@ -42,6 +42,22 @@ export class AdminsController {
   constructor(private readonly adminsService: AdminsService) {}
 
   /*
+   * GET /admins/dashboard/stats
+   */
+  @Get('dashboard/stats')
+  @RequirePermissions(PERMISSION_CODES.DASHBOARD_VIEW)
+  @ApiOperation({
+    summary: 'Admin dashboard statistics',
+    description:
+      'Returns totals and 7-day chart data for the admin dashboard. Requires DASHBOARD_VIEW permission.',
+  })
+  @ApiResponse({ status: 200, description: 'Dashboard stats returned' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions' })
+  getDashboardStats() {
+    return this.adminsService.getDashboardStats();
+  }
+
+  /*
    * GET /admins
    */
   @Get()

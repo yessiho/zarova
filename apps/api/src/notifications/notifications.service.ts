@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 import { PrismaService } from '../prisma/prisma.service.js';
 import { nowInstant } from '../prisma/temporal.js';
 
@@ -14,7 +16,10 @@ import {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
+  ) {}
 
   /*
    * ==========================================
@@ -49,7 +54,22 @@ export class NotificationsService {
         updatedAt: nowInstant(),
       });
 
-    return this.serialize(notification);
+    const serialized = this.serialize(notification);
+
+    // Push to connected WebSocket clients in real time
+    this.events.emit('notification.created', {
+      userId: dto.userId,
+      notification: {
+        id: serialized.id,
+        title: serialized.title,
+        body: serialized.body,
+        type: serialized._type,
+        read: false,
+        createdAt: serialized.createdAt,
+      },
+    });
+
+    return serialized;
   }
 
   /*

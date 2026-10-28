@@ -36591,6 +36591,40 @@ a.rpt-kpi:hover .rpt-kpi-arrow { color: #94a3b8; }
 }
 
 /* =========================================================
+   KYC FILE UPLOAD AREA
+========================================================= */
+
+.kyc-upload-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+  background-color: #f8fafc;
+}
+
+.kyc-upload-area:hover {
+  border-color: var(--primary);
+  background-color: #f0f6ff;
+}
+
+.kyc-upload-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 16px;
+}
+
+.kyc-upload-done {
+  color: #16a34a;
+}
+
+/* =========================================================
    KYC SUCCESS STATE
 ========================================================= */
 
@@ -39501,5 +39535,81 @@ a.rpt-kpi:hover .rpt-kpi-arrow { color: #94a3b8; }
   .app-content {
     padding: 72px 16px 40px !important;
   }
+}
+
+/* =========================================================
+   LIVE NOTIFICATION TOAST
+========================================================= */
+
+.live-toast-stack {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+  width: calc(100vw - 48px);
+}
+
+.live-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: 10px;
+  padding: 14px 14px 14px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  animation: toast-in 0.25s ease;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)  scale(1); }
+}
+
+.live-toast-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #facc15;
+}
+
+.live-toast-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.live-toast-content strong {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #f8fafc;
+}
+
+.live-toast-content span {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.live-toast-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.live-toast-close:hover {
+  color: #f8fafc;
 }
 

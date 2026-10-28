@@ -37,6 +37,8 @@ import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { PaystackModule } from './paystack/paystack.module.js';
 import { KycModule } from './kyc/kyc.module.js';
 import { BillsModule } from './bills/bills.module.js';
+import { SeedModule } from './seed/seed.module.js';
+import { UploadModule } from './upload/upload.module.js';
 
 @Module({
   imports: [
@@ -95,6 +97,12 @@ import { BillsModule } from './bills/bills.module.js';
 
     // Bill Payments (airtime, data, electricity, cable, internet)
     BillsModule,
+
+    // Demo data (seeds on first boot when DB is empty)
+    SeedModule,
+
+    // File uploads (Cloudinary — KYC documents)
+    UploadModule,
   ],
 
   controllers: [AppController],

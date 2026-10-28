@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -10,11 +10,123 @@ import {
   Loader2,
   Shield,
   ShieldCheck,
+  Upload,
   User,
   X,
 } from 'lucide-react';
 
 import { apiFetch } from '@/lib/api';
+import { getAccessToken } from '@/lib/auth';
+
+/* ============================================================
+   FILE UPLOAD HELPER
+   ============================================================ */
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+async function uploadKycFile(
+  file: File,
+  type: 'kyc-front' | 'kyc-back' | 'kyc-selfie',
+): Promise<string> {
+  const token = getAccessToken();
+  const body = new FormData();
+  body.append('file', file);
+
+  const res = await fetch(`${API_URL}/upload/kyc?type=${type}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? `Upload failed (${res.status})`);
+  }
+
+  const data = await res.json() as { url: string };
+  return data.url;
+}
+
+/* ============================================================
+   FILE UPLOAD FIELD COMPONENT
+   ============================================================ */
+
+function FileUploadField({
+  id,
+  label,
+  hint,
+  type,
+  value,
+  onUploaded,
+  error,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  type: 'kyc-front' | 'kyc-back' | 'kyc-selfie';
+  value: string;
+  onUploaded: (url: string) => void;
+  error?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError('');
+
+    try {
+      const url = await uploadKycFile(file, type);
+      onUploaded(url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  return (
+    <div className="form-field">
+      <label htmlFor={id}>{label}</label>
+      <div className="kyc-upload-area" onClick={() => inputRef.current?.click()}>
+        <input
+          ref={inputRef}
+          id={id}
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
+          style={{ display: 'none' }}
+          onChange={(e) => void handleFile(e)}
+          disabled={uploading}
+        />
+        {uploading ? (
+          <div className="kyc-upload-status">
+            <Loader2 size={20} className="kyc-spin" />
+            <span>Uploading...</span>
+          </div>
+        ) : value ? (
+          <div className="kyc-upload-status kyc-upload-done">
+            <CheckCircle2 size={20} />
+            <span>Uploaded — click to replace</span>
+          </div>
+        ) : (
+          <div className="kyc-upload-status">
+            <Upload size={20} />
+            <span>Click to upload (JPEG/PNG/WebP, max 5 MB)</span>
+          </div>
+        )}
+      </div>
+      <small>{hint}</small>
+      {(error ?? uploadError) && (
+        <span className="kyc-field-error">{error ?? uploadError}</span>
+      )}
+    </div>
+  );
+}
 
 /* ============================================================
    TYPES
@@ -759,53 +871,25 @@ export default function KycPage() {
                         )}
                       </div>
 
-                      <div className="form-field">
-                        <label htmlFor="kyc-documentFrontUrl">
-                          Document Front Image URL
-                        </label>
-                        <input
-                          id="kyc-documentFrontUrl"
-                          type="url"
-                          value={form.documentFrontUrl}
-                          onChange={(e) =>
-                            handleChange('documentFrontUrl', e.target.value)
-                          }
-                          placeholder="https://..."
-                        />
-                        <small>
-                          Enter the URL of the uploaded front-side document
-                          image.
-                        </small>
-                        {fieldErrors.documentFrontUrl && (
-                          <span className="kyc-field-error">
-                            {fieldErrors.documentFrontUrl}
-                          </span>
-                        )}
-                      </div>
+                      <FileUploadField
+                        id="kyc-documentFrontUrl"
+                        label="Document Front Image"
+                        hint="Upload the front side of your identity document."
+                        type="kyc-front"
+                        value={form.documentFrontUrl}
+                        onUploaded={(url) => handleChange('documentFrontUrl', url)}
+                        error={fieldErrors.documentFrontUrl}
+                      />
 
-                      <div className="form-field">
-                        <label htmlFor="kyc-documentBackUrl">
-                          Document Back Image URL
-                        </label>
-                        <input
-                          id="kyc-documentBackUrl"
-                          type="url"
-                          value={form.documentBackUrl}
-                          onChange={(e) =>
-                            handleChange('documentBackUrl', e.target.value)
-                          }
-                          placeholder="https://..."
-                        />
-                        <small>
-                          Enter the URL of the uploaded back-side document
-                          image.
-                        </small>
-                        {fieldErrors.documentBackUrl && (
-                          <span className="kyc-field-error">
-                            {fieldErrors.documentBackUrl}
-                          </span>
-                        )}
-                      </div>
+                      <FileUploadField
+                        id="kyc-documentBackUrl"
+                        label="Document Back Image"
+                        hint="Upload the back side of your identity document (not required for passport)."
+                        type="kyc-back"
+                        value={form.documentBackUrl}
+                        onUploaded={(url) => handleChange('documentBackUrl', url)}
+                        error={fieldErrors.documentBackUrl}
+                      />
                     </div>
                   </div>
                 )}
@@ -831,27 +915,15 @@ export default function KycPage() {
 
                     <div className="kyc-form-grid">
                       <div className="form-field full-width">
-                        <label htmlFor="kyc-selfieUrl">
-                          Selfie Image URL
-                        </label>
-                        <input
+                        <FileUploadField
                           id="kyc-selfieUrl"
-                          type="url"
+                          label="Selfie Photo"
+                          hint="Upload a clear selfie holding your identity document beside your face."
+                          type="kyc-selfie"
                           value={form.selfieUrl}
-                          onChange={(e) =>
-                            handleChange('selfieUrl', e.target.value)
-                          }
-                          placeholder="https://..."
+                          onUploaded={(url) => handleChange('selfieUrl', url)}
+                          error={fieldErrors.selfieUrl}
                         />
-                        <small>
-                          Enter the URL of the uploaded selfie image holding
-                          your document.
-                        </small>
-                        {fieldErrors.selfieUrl && (
-                          <span className="kyc-field-error">
-                            {fieldErrors.selfieUrl}
-                          </span>
-                        )}
                       </div>
 
                       <div className="form-field full-width">

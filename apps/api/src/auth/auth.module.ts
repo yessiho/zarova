@@ -8,12 +8,14 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { UsersModule } from '../users/users.module.js';
+import { EmailModule } from '../email/email.module.js';
 
 @Global()
 @Module({
   imports: [
     PrismaModule,
     UsersModule,
+    EmailModule,
 
     PassportModule.register({
       defaultStrategy: 'jwt',
