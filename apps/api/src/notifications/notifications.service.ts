@@ -37,6 +37,16 @@ export class NotificationsService {
     );
   }
 
+  private toPublic(raw: any): any {
+    const s = this.serialize(raw);
+    // Prisma 8 maps `_type` → DB column `type`; remap for the API response
+    if (s && '_type' in s) {
+      s.type = s._type;
+      delete s._type;
+    }
+    return s;
+  }
+
   /*
    * ==========================================
    * CREATE NOTIFICATION
@@ -69,7 +79,7 @@ export class NotificationsService {
       },
     });
 
-    return serialized;
+    return this.toPublic(notification);
   }
 
   /*
@@ -125,7 +135,7 @@ export class NotificationsService {
     const data = userNotifications.slice(offset, offset + limit);
 
     return {
-      data: this.serialize(data),
+      data: data.map((n: any) => this.toPublic(n)),
       total,
       unread,
     };
@@ -158,7 +168,7 @@ export class NotificationsService {
         updatedAt: nowInstant(),
       });
 
-    return this.serialize(updated);
+    return this.toPublic(updated);
   }
 
   /*

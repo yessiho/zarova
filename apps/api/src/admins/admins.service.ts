@@ -18,7 +18,8 @@ export class AdminsService {
   ) {}
 
   async create(createAdminDto: CreateAdminDto, performedByAdminId?: number) {
-    const { email, password, firstName, lastName } = createAdminDto;
+    const { password, firstName, lastName } = createAdminDto;
+    const email = createAdminDto.email.trim().toLowerCase();
 
     const existingAdmin = await this.prisma.client.orm.public.Admin.first({
       email,
