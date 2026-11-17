@@ -280,6 +280,31 @@ export class AdminsService {
       userGrowth.push({ date: dateStr, count: dayUsers.length });
     }
 
+    // ── Status breakdown ───────────────────────────────────────
+    const breakdown = {
+      completed: allTransactions.filter((t) => t.status === 'COMPLETED').length,
+      pending: allTransactions.filter((t) => t.status === 'PENDING').length,
+      processing: allTransactions.filter((t) => t.status === 'PROCESSING').length,
+      failed: allTransactions.filter((t) => t.status === 'FAILED').length,
+      reversed: allTransactions.filter((t) => t.status === 'REVERSED').length,
+    };
+
+    // ── Recent 5 transactions ──────────────────────────────────
+    const sortedTxns = [...allTransactions].sort((a: any, b: any) => {
+      const aMs = new Date(String(a.createdAt)).getTime();
+      const bMs = new Date(String(b.createdAt)).getTime();
+      return bMs - aMs;
+    });
+    const recentTransactions = sortedTxns.slice(0, 5).map((t: any) => ({
+      id: t.id,
+      reference: t.reference,
+      amount: Number(t.amount / 100n),
+      currency: t.currency,
+      status: t.status,
+      type: t._type,
+      createdAt: String(t.createdAt),
+    }));
+
     return {
       totals: {
         users: totalUsers,
@@ -289,6 +314,8 @@ export class AdminsService {
       },
       transactionChart: chartDays,
       userGrowthChart: userGrowth,
+      breakdown,
+      recentTransactions,
     };
   }
 

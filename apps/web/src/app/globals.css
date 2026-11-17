@@ -29968,6 +29968,144 @@ textarea:disabled {
 }
 
 /* ============================================================
+   ADMIN OVERVIEW — DYNAMIC ADDITIONS
+   ============================================================ */
+
+/* Trend badge on stat cards */
+.admin-stat-card {
+  position: relative;
+}
+
+.admin-stat-card-accent {
+  border-left: 3px solid var(--primary);
+}
+
+.admin-stat-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: flex-start;
+  padding: 3px 7px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.admin-stat-trend.up {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.admin-stat-trend.down {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.admin-stat-trend.neutral {
+  background: #f1f5f9;
+  color: var(--text-muted);
+}
+
+/* Last updated timestamp */
+.admin-last-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+  vertical-align: middle;
+}
+
+/* Donut chart container */
+.admin-donut-wrap {
+  padding: 16px 20px 20px;
+}
+
+.admin-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.admin-donut-center strong {
+  font-size: 20px;
+  font-weight: 750;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.admin-donut-center span {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Donut legend */
+.admin-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.admin-donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.admin-donut-legend-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.admin-donut-legend-name {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.admin-donut-legend-val {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+/* Bottom 2-column grid (bar chart + quick links) */
+.admin-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+  gap: 20px;
+  align-items: start;
+  margin-top: 20px;
+}
+
+@media (max-width: 1200px) {
+  .admin-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
    ADMINISTRATOR CREATE PAGE
    Append to apps/web/src/app/globals.css
    ============================================================ */
