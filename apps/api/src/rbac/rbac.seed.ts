@@ -28,29 +28,15 @@ export class RbacSeedService implements OnModuleInit {
   }
 
   /**
-   * If the first-registered admin has no roles, assign them SUPER_ADMIN.
-   * This handles cold-start bootstrap where the admin was created before
-   * the RBAC tables were populated.
+   * If no active SUPER_ADMIN role assignment exists anywhere in the system,
+   * grant SUPER_ADMIN to every admin who does not already have it.
+   *
+   * This handles:
+   * - Cold-start on a fresh database (admin registered after first boot)
+   * - Local dev databases where the original bootstrap missed the admin
+   * - Any state where admins exist but none has an active SUPER_ADMIN role
    */
   private async bootstrapFirstAdmin(): Promise<void> {
-    const firstAdmin =
-      await this.prisma.client.orm.public.Admin.first({
-        id: 1,
-      });
-
-    if (!firstAdmin) {
-      return;
-    }
-
-    const existingAssignments =
-      await this.prisma.client.orm.public.AdminRoleAssignment.where({
-        adminId: firstAdmin.id,
-      }).all();
-
-    if (existingAssignments.length > 0) {
-      return;
-    }
-
     const superAdminRole =
       await this.prisma.client.orm.public.AdminRole.first({
         code: ADMIN_ROLE_CODES.SUPER_ADMIN,
@@ -58,21 +44,48 @@ export class RbacSeedService implements OnModuleInit {
 
     if (!superAdminRole) {
       this.logger.error(
-        'SUPER_ADMIN role not found after seeding — cannot bootstrap first admin.',
+        'SUPER_ADMIN role not found after seeding — cannot bootstrap.',
       );
       return;
     }
 
-    await this.prisma.client.orm.public.AdminRoleAssignment.create({
-      adminId: firstAdmin.id,
-      roleId: superAdminRole.id,
-      isActive: true,
-      updatedAt: nowInstant(),
-    });
+    const activeSuperAdmins =
+      await this.prisma.client.orm.public.AdminRoleAssignment.where({
+        roleId: superAdminRole.id,
+        isActive: true,
+      }).all();
 
-    this.logger.log(
-      `Assigned SUPER_ADMIN role to first admin: ${firstAdmin.email}`,
-    );
+    if ((activeSuperAdmins as any[]).length > 0) {
+      return; // At least one SUPER_ADMIN already exists
+    }
+
+    const allAdmins =
+      await this.prisma.client.orm.public.Admin.all();
+
+    if ((allAdmins as any[]).length === 0) {
+      return; // No admins yet — nothing to bootstrap
+    }
+
+    for (const admin of allAdmins as any[]) {
+      const existing =
+        await this.prisma.client.orm.public.AdminRoleAssignment.first({
+          adminId: admin.id,
+          roleId: superAdminRole.id,
+        });
+
+      if (existing) continue;
+
+      await this.prisma.client.orm.public.AdminRoleAssignment.create({
+        adminId: admin.id,
+        roleId: superAdminRole.id,
+        isActive: true,
+        updatedAt: nowInstant(),
+      });
+
+      this.logger.log(
+        `Bootstrap: granted SUPER_ADMIN to admin ${admin.email} (id=${admin.id})`,
+      );
+    }
   }
 
   /**
